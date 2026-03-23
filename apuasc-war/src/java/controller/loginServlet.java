@@ -4,18 +4,29 @@
  */
 package controller;
 
+import jakarta.ejb.EJB;
 import java.io.IOException;
 import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import models.UsersEntityFacade;
+import models.UsersEntity;
 
 /**
  *
  * @author Samuel Chong
  */
-public class loginServlet extends HttpServlet {
+import utils.hashPassword;
+
+public class LoginServlet extends HttpServlet {
+    
+    @EJB
+    private UsersEntityFacade userFacade; 
+    private String hashpassword;
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -69,7 +80,28 @@ public class loginServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        processRequest(request, response);
+//        processRequest(request, response);
+        
+        String email = request.getParameter("email");
+        String password = request.getParameter("password");
+        
+
+        // Lookup user via facade
+        UsersEntity user = userFacade.findByEmail(email);
+        
+        String hashedPassword = hashPassword.hashPassword(password);
+
+        if (user != null && user.getPassword().equals(hashedPassword)) {
+            // ⚠️ Replace with hashed password check in production
+            HttpSession session = request.getSession();
+            session.setAttribute("user", user);
+//            response.sendRedirect("/Dashboard/AdminDashboard.jsp");
+            response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
+
+        } else {
+            request.setAttribute("errorMessage", "Invalid username or password");
+            request.getRequestDispatcher("loginjsp.jsp").forward(request, response);
+        }
     }
 
     /**

@@ -6,7 +6,9 @@ package models;
 
 import jakarta.ejb.Stateless;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
+import models.UsersEntity;
 
 /**
  *
@@ -27,4 +29,14 @@ public class UsersEntityFacade extends AbstractFacade<UsersEntity> {
         super(UsersEntity.class);
     }
     
+    
+    public UsersEntity findByEmail(String email) {
+        try {
+            return em.createQuery("SELECT u FROM UsersEntity u WHERE u.email = :email", UsersEntity.class)
+                     .setParameter("email", email)
+                     .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
 }
