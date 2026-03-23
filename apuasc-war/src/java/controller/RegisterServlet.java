@@ -4,6 +4,7 @@
  */
 package controller;
 
+import jakarta.ejb.EJB;
 import utils.CountryLoader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -15,6 +16,7 @@ import java.util.List;
 import models.UsersEntity;
 import models.UsersEntityFacade;
 import utils.CountryLoader;
+import utils.hashPassword;
 
 /**
  *
@@ -22,6 +24,7 @@ import utils.CountryLoader;
  */
 public class RegisterServlet extends HttpServlet {
     
+    @EJB
     private UsersEntityFacade userFacade;
 
     /**
@@ -83,21 +86,43 @@ public class RegisterServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        processRequest(request, response);
         UsersEntity user = new UsersEntity();
         user.setName(request.getParameter("name"));
-        user.setPassword(request.getParameter("password")); // ⚠️ hash before storing
+
+        // Hash the password before saving
+        String rawPassword = request.getParameter("password");
+        String hashedPassword = hashPassword.hashPassword(rawPassword);
+        user.setPassword(hashedPassword);
+
         user.setGender(request.getParameter("gender"));
-        user.setIs_malaysian(Boolean.parseBoolean(request.getParameter("is_malaysian")));
+        user.setIs_malaysian(Integer.valueOf(request.getParameter("is_malaysian")));
         user.setOrigin_country(request.getParameter("origin_country"));
-        user.setPhone_number(Integer.parseInt(request.getParameter("phone")));
-        user.setIC_number_passportnumber(request.getParameter("ic_passport"));
-        user.setIC_number_passportnumber(request.getParameter("passport_number"));
+
+        try {
+            user.setCountry_code(Integer.valueOf(request.getParameter("country_code")));
+        } catch (NumberFormatException e) {
+            user.setCountry_code(null);
+        }
+
+        try {
+            user.setPhone_number(String.valueOf(request.getParameter("phone")));
+        } catch (NumberFormatException e) {
+            user.setPhone_number(null);
+        }
+
+        String ic = request.getParameter("ic_passport");
+        String passport = request.getParameter("passport_number");
+        if (ic != null && !ic.isEmpty()) {
+            user.setIC_number_passportnumber(ic);
+        } else if (passport != null && !passport.isEmpty()) {
+            user.setIC_number_passportnumber(passport);
+        }
+
         user.setEmail(request.getParameter("email"));
         user.setHome_address(request.getParameter("user_address"));
         user.setRole(request.getParameter("role"));
-        user.setHave_Manager_access(Boolean.parseBoolean(request.getParameter("manager_access")));
-        user.setIs_Super_Admin(Boolean.parseBoolean(request.getParameter("is_super_admin")));
+        user.setHave_Manager_access(Integer.valueOf(request.getParameter("manager_access")));
+        user.setIs_Super_Admin(Integer.valueOf(request.getParameter("is_super_admin")));
 
         try {
             userFacade.create(user);

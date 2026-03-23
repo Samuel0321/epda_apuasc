@@ -89,12 +89,32 @@
 <!--            <label for="origin_country">Origin Country</label>
             <input type="text" id="origin_country" name="origin_country" maxlength="100">-->
             
-            <label for="origin_country">Origin Country</label>
+<!--            <label for="origin_country">Origin Country</label>
             <select id="origin_country" name="origin_country" required>
                 <c:forEach var="c" items="${countries}">
                     <option value="${c.name}">${c.name} (+${c.code})</option>
                 </c:forEach>
+            </select>-->
+
+            <label for="origin_country">Origin Country</label>
+            <select id="origin_country" name="origin_country" onchange="setCountryCode(this)" required>
+                <c:forEach var="c" items="${countries}">
+                    <option value="${c.name}" data-code="${c.code}">
+                        ${c.name} (+${c.code})
+                    </option>
+                </c:forEach>
             </select>
+
+            <!-- Hidden field to carry the code -->
+            <input type="hidden" id="country_code" name="country_code">
+
+            <script>
+            function setCountryCode(select) {
+                const code = select.options[select.selectedIndex].dataset.code;
+                document.getElementById("country_code").value = code;
+            }
+            </script>
+
             
 
             <label for="phone">Phone</label>

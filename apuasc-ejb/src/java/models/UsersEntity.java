@@ -24,23 +24,25 @@ public class UsersEntity implements Serializable {
     private String name;
     private String password;
     private String gender;
-    private Boolean is_malaysian;
+    private Integer is_malaysian;
     private String origin_country;
-    private Integer phone_number;
+    private Integer country_code;
+    private String phone_number;
     private String IC_number_passportnumber;
     private String email;
     private String home_address;
     private String role;
-    private Boolean Have_Manager_access;
-    private Boolean Is_Super_Admin;
+    private Integer Have_Manager_access;
+    private Integer Is_Super_Admin;
 
-    public UsersEntity(Integer id, String name, String password, String gender, Boolean is_malaysian, String origin_country, Integer phone_number, String IC_number_passportnumber, String email, String home_address, String role, Boolean Have_Manager_access, Boolean Is_Super_Admin) {
+    public UsersEntity(Integer id, String name, String password, String gender, Integer is_malaysian, String origin_country,Integer country_code, String phone_number, String IC_number_passportnumber, String email, String home_address, String role, Integer Have_Manager_access, Integer Is_Super_Admin) {
         this.id = id;
         this.name = name;
         this.password = password;
         this.gender = gender;
         this.is_malaysian = is_malaysian;
         this.origin_country = origin_country;
+        this.country_code = country_code;
         this.phone_number = phone_number;
         this.IC_number_passportnumber = IC_number_passportnumber;
         this.email = email;
@@ -48,6 +50,14 @@ public class UsersEntity implements Serializable {
         this.role = role;
         this.Have_Manager_access = Have_Manager_access;
         this.Is_Super_Admin = Is_Super_Admin;
+    }
+
+    public Integer getCountry_code() {
+        return country_code;
+    }
+
+    public void setCountry_code(Integer country_code) {
+        this.country_code = country_code;
     }
 
     public String getName() {
@@ -74,11 +84,11 @@ public class UsersEntity implements Serializable {
         this.gender = gender;
     }
 
-    public Boolean getIs_malaysian() {
+    public Integer getIs_malaysian() {
         return is_malaysian;
     }
 
-    public void setIs_malaysian(Boolean is_malaysian) {
+    public void setIs_malaysian(Integer is_malaysian) {
         this.is_malaysian = is_malaysian;
     }
 
@@ -90,11 +100,11 @@ public class UsersEntity implements Serializable {
         this.origin_country = origin_country;
     }
 
-    public Integer getPhone_number() {
+    public String getPhone_number() {
         return phone_number;
     }
 
-    public void setPhone_number(Integer phone_number) {
+    public void setPhone_number(String phone_number) {
         this.phone_number = phone_number;
     }
 
@@ -130,19 +140,19 @@ public class UsersEntity implements Serializable {
         this.role = role;
     }
 
-    public Boolean getHave_Manager_access() {
+    public Integer getHave_Manager_access() {
         return Have_Manager_access;
     }
 
-    public void setHave_Manager_access(Boolean Have_Manager_access) {
+    public void setHave_Manager_access(Integer Have_Manager_access) {
         this.Have_Manager_access = Have_Manager_access;
     }
 
-    public Boolean getIs_Super_Admin() {
+    public Integer getIs_Super_Admin() {
         return Is_Super_Admin;
     }
 
-    public void setIs_Super_Admin(Boolean Is_Super_Admin) {
+    public void setIs_Super_Admin(Integer Is_Super_Admin) {
         this.Is_Super_Admin = Is_Super_Admin;
     }
 
