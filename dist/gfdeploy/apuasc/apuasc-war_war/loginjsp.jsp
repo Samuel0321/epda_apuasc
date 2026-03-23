@@ -19,7 +19,10 @@
             <button type="submit">Login</button>
         </form>
         
-        <link href="registerjsp.jsp"> register<>
+        <a href="register.jsp">Register</a>
+        <a href="RegisterServlet">Register2</a>
+
+
         
         <p style="color:red;">
             ${errorMessage}

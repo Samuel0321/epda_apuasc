@@ -30,8 +30,25 @@ public class UsersEntity implements Serializable {
     private String IC_number_passportnumber;
     private String email;
     private String home_address;
-    private Integer role;
+    private String role;
     private Boolean Have_Manager_access;
+    private Boolean Is_Super_Admin;
+
+    public UsersEntity(Integer id, String name, String password, String gender, Boolean is_malaysian, String origin_country, Integer phone_number, String IC_number_passportnumber, String email, String home_address, String role, Boolean Have_Manager_access, Boolean Is_Super_Admin) {
+        this.id = id;
+        this.name = name;
+        this.password = password;
+        this.gender = gender;
+        this.is_malaysian = is_malaysian;
+        this.origin_country = origin_country;
+        this.phone_number = phone_number;
+        this.IC_number_passportnumber = IC_number_passportnumber;
+        this.email = email;
+        this.home_address = home_address;
+        this.role = role;
+        this.Have_Manager_access = Have_Manager_access;
+        this.Is_Super_Admin = Is_Super_Admin;
+    }
 
     public String getName() {
         return name;
@@ -105,11 +122,11 @@ public class UsersEntity implements Serializable {
         this.home_address = home_address;
     }
 
-    public Integer getRole() {
+    public String getRole() {
         return role;
     }
 
-    public void setRole(Integer role) {
+    public void setRole(String role) {
         this.role = role;
     }
 
@@ -121,20 +138,14 @@ public class UsersEntity implements Serializable {
         this.Have_Manager_access = Have_Manager_access;
     }
 
-    public UsersEntity(Integer id, String name, String password, String gender, Boolean is_malaysian, String origin_country, Integer phone_number, String IC_number_passportnumber, String email, String home_address, Integer role, Boolean Have_Manager_access) {
-        this.id = id;
-        this.name = name;
-        this.password = password;
-        this.gender = gender;
-        this.is_malaysian = is_malaysian;
-        this.origin_country = origin_country;
-        this.phone_number = phone_number;
-        this.IC_number_passportnumber = IC_number_passportnumber;
-        this.email = email;
-        this.home_address = home_address;
-        this.role = role;
-        this.Have_Manager_access = Have_Manager_access;
+    public Boolean getIs_Super_Admin() {
+        return Is_Super_Admin;
     }
+
+    public void setIs_Super_Admin(Boolean Is_Super_Admin) {
+        this.Is_Super_Admin = Is_Super_Admin;
+    }
+
 
     public UsersEntity() {
     }
