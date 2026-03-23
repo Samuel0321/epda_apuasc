@@ -8,7 +8,6 @@ import jakarta.ejb.EJB;
 import java.io.IOException;
 import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,7 +25,6 @@ public class LoginServlet extends HttpServlet {
     
     @EJB
     private UsersEntityFacade userFacade; 
-    private String hashpassword;
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
