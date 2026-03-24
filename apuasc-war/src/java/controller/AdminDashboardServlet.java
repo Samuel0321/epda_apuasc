@@ -11,7 +11,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import java.util.List;
 import models.UsersEntityFacade;
 import models.UsersEntity;
 
@@ -19,12 +19,10 @@ import models.UsersEntity;
  *
  * @author Samuel Chong
  */
-import utils.hashPassword;
-
-public class LoginServlet extends HttpServlet {
+public class AdminDashboardServlet extends HttpServlet {
     
-    @EJB
-    private UsersEntityFacade userFacade; 
+   @EJB
+    private UsersEntityFacade userFacade;
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -43,10 +41,10 @@ public class LoginServlet extends HttpServlet {
             out.println("<!DOCTYPE html>");
             out.println("<html>");
             out.println("<head>");
-            out.println("<title>Servlet loginServlet</title>");
+            out.println("<title>Servlet AdminDashboardServlet</title>");
             out.println("</head>");
             out.println("<body>");
-            out.println("<h1>Servlet loginServlet at " + request.getContextPath() + "</h1>");
+            out.println("<h1>Servlet AdminDashboardServlet at " + request.getContextPath() + "</h1>");
             out.println("</body>");
             out.println("</html>");
         }
@@ -65,6 +63,14 @@ public class LoginServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
+        // Fetch all users from DB
+        List<UsersEntity> users = userFacade.findAll();
+
+        // Attach to request
+        request.setAttribute("userList", users);
+
+        // Forward to JSP
+        request.getRequestDispatcher("/Dashboard/AdminDashboard.jsp").forward(request, response);
     }
 
     /**
@@ -78,51 +84,7 @@ public class LoginServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-//        processRequest(request, response);
-        
-        String email = request.getParameter("email");
-        String password = request.getParameter("password");
-        
-
-        // Lookup user via facade
-        UsersEntity user = userFacade.findByEmail(email);
-        
-        String hashedPassword = hashPassword.hashPassword(password);
-
-        if (user != null && user.getPassword().equals(hashedPassword)) {
-            // ⚠️ Replace with hashed password check in production
-            HttpSession session = request.getSession();
-            session.setAttribute("user", user);
-            
-            String userrole = user.getRole();
-            
-            
-            if (null != userrole)switch (userrole) {
-                case "manager":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                    break;
-//            response.sendRedirect("/Dashboard/AdminDashboard.jsp");
-//            response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                case "super_admin":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                    break;
-                case "counter_staff":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                    break;
-                case "technician":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                    break;
-                case "customer":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                    break;
-                default:
-                    break;
-            }
-
-        } else {
-            request.setAttribute("errorMessage", "Invalid username or password");
-            request.getRequestDispatcher("loginjsp.jsp").forward(request, response);
-        }
+        processRequest(request, response);
     }
 
     /**

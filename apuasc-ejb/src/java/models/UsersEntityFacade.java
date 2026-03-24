@@ -8,7 +8,7 @@ import jakarta.ejb.Stateless;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
-import models.UsersEntity;
+import java.util.List;
 
 /**
  *
@@ -27,6 +27,10 @@ public class UsersEntityFacade extends AbstractFacade<UsersEntity> {
 
     public UsersEntityFacade() {
         super(UsersEntity.class);
+    }
+    
+    public List<UsersEntity> findAll() {
+        return em.createQuery("SELECT u FROM UsersEntity u", UsersEntity.class).getResultList();
     }
     
     
