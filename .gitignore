@@ -1,0 +1,67 @@
+# =========================
+
+# BUILD OUTPUTS
+
+# =========================
+
+build/
+dist/
+target/
+out/
+
+# compiled classes
+
+*.class
+
+# packaged outputs (generated)
+
+*.war
+*.ear
+
+# logs
+
+*.log
+
+# =========================
+
+# NETBEANS (shared config kept)
+
+# =========================
+
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# user-specific
+
+private.properties
+
+# =========================
+
+# GLASSFISH / SERVER
+
+# =========================
+
+glassfish/
+domains/
+.db/
+
+# =========================
+
+# OS FILES
+
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+
+# IMPORTANT: keep CopyLibs
+
+# =========================
+
+!lib/
+!lib/CopyLibs/
+!lib/CopyLibs/*.jar
