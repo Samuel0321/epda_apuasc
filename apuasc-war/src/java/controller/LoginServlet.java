@@ -14,12 +14,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import models.UsersEntityFacade;
 import models.UsersEntity;
-
-/**
- *
- * @author Samuel Chong
- */
 import utils.hashPassword;
+import utils.SidebarService;
+import java.util.List;
+import utils.NavItem;
 
 public class LoginServlet extends HttpServlet {
     
@@ -79,43 +77,45 @@ public class LoginServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 //        processRequest(request, response);
-        
+
         String email = request.getParameter("email");
         String password = request.getParameter("password");
-        
+
 
         // Lookup user via facade
         UsersEntity user = userFacade.findByEmail(email);
-        
+
         String hashedPassword = hashPassword.hashPassword(password);
 
         if (user != null && user.getPassword().equals(hashedPassword)) {
             // ⚠️ Replace with hashed password check in production
             HttpSession session = request.getSession();
             session.setAttribute("user", user);
-            
-            String userrole = user.getRole();
-            
-            
-            if (null != userrole)switch (userrole) {
-                case "manager":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                    break;
-//            response.sendRedirect("/Dashboard/AdminDashboard.jsp");
-//            response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                case "super_admin":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                    break;
+
+            String userRole = user.getRole();
+
+            // Get sidebar menu based on role
+            List<NavItem> menu = SidebarService.getMenu(userRole);
+            session.setAttribute("menu", menu);
+
+            if (null != userRole)switch (userRole) {
+                case "receptionist":
                 case "counter_staff":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
+                    response.sendRedirect(request.getContextPath() + "/ReceptionistDashboardServlet");
+                    break;
+                case "manager":
+                case "super_admin":
+                case "admin":
+                    response.sendRedirect(request.getContextPath() + "/ManagerDashboardServlet");
                     break;
                 case "technician":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
+                    response.sendRedirect(request.getContextPath() + "/TechnicianDashboardServlet");
                     break;
                 case "customer":
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
+                    response.sendRedirect(request.getContextPath() + "/CustomerDashboardServlet");
                     break;
                 default:
+                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
                     break;
             }
 

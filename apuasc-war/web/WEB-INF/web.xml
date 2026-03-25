@@ -12,6 +12,22 @@
         <servlet-name>AdminDashboardServlet</servlet-name>
         <servlet-class>controller.AdminDashboardServlet</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>ReceptionistDashboardServlet</servlet-name>
+        <servlet-class>controller.ReceptionistDashboardServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>ManagerDashboardServlet</servlet-name>
+        <servlet-class>controller.ManagerDashboardServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>TechnicianDashboardServlet</servlet-name>
+        <servlet-class>controller.TechnicianDashboardServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>CustomerDashboardServlet</servlet-name>
+        <servlet-class>controller.CustomerDashboardServlet</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>loginServlet</servlet-name>
         <url-pattern>/loginServlet</url-pattern>
@@ -23,5 +39,21 @@
     <servlet-mapping>
         <servlet-name>AdminDashboardServlet</servlet-name>
         <url-pattern>/AdminDashboardServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>ReceptionistDashboardServlet</servlet-name>
+        <url-pattern>/ReceptionistDashboardServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>ManagerDashboardServlet</servlet-name>
+        <url-pattern>/ManagerDashboardServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>TechnicianDashboardServlet</servlet-name>
+        <url-pattern>/TechnicianDashboardServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>CustomerDashboardServlet</servlet-name>
+        <url-pattern>/CustomerDashboardServlet</url-pattern>
     </servlet-mapping>
 </web-app>
