@@ -21,7 +21,7 @@ public class SidebarService {
         if (normalizedRole.equals("receptionist") || normalizedRole.equals("counter_staff")) {
             menu.add(new NavItem("Dashboard", "/apuasc-war/ReceptionistDashboardServlet"));
             menu.add(new NavItem("Appointments", "../Pages/Receptionist/Appointments.jsp"));
-            menu.add(new NavItem("Register Customer", "../Pages/Receptionist/RegisterCustomer.jsp"));
+            menu.add(new NavItem("Customer", "../Pages/Receptionist/ManageCustomers.jsp"));
             menu.add(new NavItem("Payments", "../Pages/Receptionist/Payments.jsp"));
             menu.add(new NavItem("Notifications", "../Pages/Common/Notifications.jsp"));
         } else if (normalizedRole.equals("manager") || normalizedRole.equals("super_admin") || normalizedRole.equals("admin")) {

@@ -89,6 +89,22 @@
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
+
+        .info-box {
+            margin-top: -8px;
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1e40af;
+            font-size: 13px;
+        }
+
+        .availability {
+            margin-top: 8px;
+            color: #64748b;
+            font-size: 13px;
+        }
     </style>
 </head>
 
@@ -148,25 +164,24 @@
                     <label for="serviceType">Service Type *</label>
                     <select id="serviceType" name="serviceType" required>
                         <option value="">Select Service</option>
-                        <option value="oil_change">Oil Change</option>
-                        <option value="tire_rotation">Tire Rotation</option>
-                        <option value="brake_inspection">Brake Inspection</option>
-                        <option value="engine_inspection">Engine Inspection</option>
-                        <option value="battery_check">Battery Check</option>
-                        <option value="ac_service">AC Service</option>
-                        <option value="transmission">Transmission Service</option>
-                        <option value="general_maintenance">General Maintenance</option>
+                        <option value="normal_service">Normal Service (1 hour)</option>
+                        <option value="major_service">Major Service (3 hours)</option>
                     </select>
+                </div>
+
+                <div class="info-box">
+                    Service duration rule: Normal Service = 1 hour, Major Service = 3 hours.
                 </div>
 
                 <div class="form-group">
                     <label for="technician">Assign Technician</label>
                     <select id="technician" name="technician">
                         <option value="">Select Technician</option>
-                        <option value="tech_001">John Smith</option>
-                        <option value="tech_002">Ahmad Hassan</option>
-                        <option value="tech_003">Nurul Amin</option>
+                        <option value="tech_001">John Smith (Available)</option>
+                        <option value="tech_002">Ahmad Hassan (Available)</option>
+                        <option value="tech_003">Nurul Amin (Busy until 2:00 PM)</option>
                     </select>
+                    <div class="availability">Only available technicians should be assigned. This is currently a frontend mock.</div>
                 </div>
 
                 <div class="form-group">

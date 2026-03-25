@@ -170,6 +170,35 @@
             font-weight: 700;
             color: #1e293b;
         }
+
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 14px;
+        }
+
+        .btn-primary-action {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-primary-action:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-receipt {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .btn-receipt:hover {
+            background: #c7d2fe;
+        }
     </style>
 </head>
 
@@ -232,6 +261,10 @@
 
         <!-- TABLE -->
         <div class="table-container">
+            <div class="toolbar">
+                <button class="btn-primary-action">+ Collect New Payment</button>
+            </div>
+
             <div class="table-header">
                 <input type="text" class="search-box" placeholder="Search by customer or transaction ID...">
             </div>
@@ -259,6 +292,7 @@
                         <td>
                             <div class="action-buttons">
                                 <button class="btn-small btn-info">View</button>
+                                <button class="btn-small btn-receipt">Receipt</button>
                             </div>
                         </td>
                     </tr>
@@ -272,6 +306,7 @@
                         <td>
                             <div class="action-buttons">
                                 <button class="btn-small btn-info">View</button>
+                                <button class="btn-small btn-receipt">Receipt</button>
                                 <button class="btn-small btn-pay">Process</button>
                             </div>
                         </td>
@@ -286,6 +321,7 @@
                         <td>
                             <div class="action-buttons">
                                 <button class="btn-small btn-info">View</button>
+                                <button class="btn-small btn-receipt">Receipt</button>
                             </div>
                         </td>
                     </tr>
@@ -299,6 +335,7 @@
                         <td>
                             <div class="action-buttons">
                                 <button class="btn-small btn-info">View</button>
+                                <button class="btn-small btn-receipt">Receipt</button>
                                 <button class="btn-small btn-pay">Retry</button>
                             </div>
                         </td>
@@ -313,6 +350,7 @@
                         <td>
                             <div class="action-buttons">
                                 <button class="btn-small btn-info">View</button>
+                                <button class="btn-small btn-receipt">Receipt</button>
                                 <button class="btn-small btn-pay">Process</button>
                             </div>
                         </td>

@@ -2,6 +2,7 @@
     Document   : WorkOrders
     Created on : Mar 24, 2026
     Author     : pinju
+    Updated   : Workflow Navigation - Added quotation buttons
 --%>
 
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
@@ -68,29 +69,40 @@
             font-weight: 500;
         }
 
-        .badge-new {
-            background: #dbeafe;
+        .badge-assigned {
+            background: #bfdbfe;
             color: #1e40af;
         }
 
-        .badge-in-progress {
+        .badge-inspecting {
             background: #fed7aa;
             color: #92400e;
         }
 
-        .badge-completed {
+        .badge-quotation {
+            background: #fef08a;
+            color: #854d0e;
+        }
+
+        .badge-approved {
             background: #bbf7d0;
             color: #166534;
         }
 
-        .badge-pending-review {
-            background: #fef3c7;
-            color: #854d0e;
+        .badge-in-service {
+            background: #a78bfa;
+            color: #4c1d95;
+        }
+
+        .badge-completed {
+            background: #c7d2fe;
+            color: #3730a3;
         }
 
         .action-buttons {
             display: flex;
             gap: 5px;
+            flex-wrap: wrap;
         }
 
         .btn-small {
@@ -101,6 +113,7 @@
             font-size: 12px;
             font-weight: 500;
             transition: all 0.3s ease;
+            white-space: nowrap;
         }
 
         .btn-start {
@@ -112,6 +125,16 @@
             background: #bfdbfe;
         }
 
+        .btn-quotation {
+            background: #fcd34d;
+            color: #854d0e;
+            font-weight: 600;
+        }
+
+        .btn-quotation:hover {
+            background: #fbbf24;
+        }
+
         .btn-complete {
             background: #bbf7d0;
             color: #166534;
@@ -119,6 +142,15 @@
 
         .btn-complete:hover {
             background: #86efac;
+        }
+
+        .btn-view {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .btn-view:hover {
+            background: #e5e7eb;
         }
 
         .filters {
@@ -144,6 +176,16 @@
             color: white;
             border-color: #2563eb;
         }
+
+        .info-banner {
+            background: #dbeafe;
+            border-left: 4px solid #2563eb;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #1e40af;
+        }
     </style>
 </head>
 
@@ -165,8 +207,8 @@
                 <div class="profile">
                     <div class="avatar">T</div>
                     <div class="user-info">
-                        <div class="name">Technician</div>
-                        <div class="email">technician@autofix.com</div>
+                        <div class="name">John Smith</div>
+                        <div class="email">john.smith@autofix.com</div>
                     </div>
                 </div>
             </div>
@@ -176,23 +218,30 @@
         <div class="header-row">
             <div class="header-text">
                 <h1>Work Orders</h1>
-                <p>View and manage assigned work orders</p>
+                <p>View all assigned work orders and manage quotations</p>
             </div>
+        </div>
+
+        <!-- INFO BANNER -->
+        <div class="info-banner">
+            💡 <strong>Quick Navigation:</strong> Click "Create Quotation" to submit your inspection and services
         </div>
 
         <!-- FILTERS -->
         <div class="filters">
             <button class="filter-btn active">All</button>
-            <button class="filter-btn">New</button>
-            <button class="filter-btn">In Progress</button>
+            <button class="filter-btn">Assigned</button>
+            <button class="filter-btn">Inspecting</button>
+            <button class="filter-btn">Quotation Ready</button>
+            <button class="filter-btn">Approved</button>
+            <button class="filter-btn">In Service</button>
             <button class="filter-btn">Completed</button>
-            <button class="filter-btn">Pending Review</button>
         </div>
 
         <!-- TABLE -->
         <div class="table-container">
             <div class="table-header">
-                <input type="text" class="search-box" placeholder="Search work orders...">
+                <input type="text" class="search-box" placeholder="Search by customer, service, or vehicle...">
             </div>
 
             <table>
@@ -202,74 +251,113 @@
                         <th>Customer</th>
                         <th>Service</th>
                         <th>Vehicle</th>
-                        <th>Status</th>
-                        <th>Due Date</th>
+                        <th>Workflow Status</th>
+                        <th>Scheduled</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- ASSIGNED - Ready for Inspection -->
                     <tr>
-                        <td>#WO001</td>
+                        <td><strong>#WO001</strong></td>
                         <td>Ahmad Faisal</td>
-                        <td>Oil Change</td>
+                        <td>Engine Inspection & Oil Change</td>
                         <td>Toyota Camry (2020)</td>
-                        <td><span class="badge badge-new">New</span></td>
+                        <td><span class="badge badge-assigned">🔵 ASSIGNED</span></td>
                         <td>Mar 25, 10:00 AM</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-start">Start</button>
+                                <button class="btn-small btn-start" onclick="startInspection('WO001')">Start Inspection</button>
                             </div>
                         </td>
                     </tr>
+
+                    <!-- INSPECTING - In Progress -->
                     <tr>
-                        <td>#WO002</td>
+                        <td><strong>#WO002</strong></td>
                         <td>Nurul Huda</td>
-                        <td>Brake Inspection</td>
+                        <td>Brake System Inspection</td>
                         <td>Honda CR-V (2019)</td>
-                        <td><span class="badge badge-in-progress">In Progress</span></td>
-                        <td>Mar 25, 2:30 PM</td>
+                        <td><span class="badge badge-inspecting">🔄 INSPECTING</span></td>
+                        <td>Mar 25, 2:00 PM</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-complete">Complete</button>
+                                <button class="btn-small btn-quotation" onclick="goToQuotation('WO002')">Create Quotation →</button>
                             </div>
                         </td>
                     </tr>
+
+                    <!-- QUOTATION - Ready to Submit -->
                     <tr>
-                        <td>#WO003</td>
+                        <td><strong>#WO003</strong></td>
                         <td>Siti Aminah</td>
-                        <td>Tire Rotation</td>
+                        <td>Oil Change & Maintenance</td>
                         <td>Nissan X-Trail (2021)</td>
-                        <td><span class="badge badge-completed">Completed</span></td>
-                        <td>Mar 24, 11:45 AM</td>
+                        <td><span class="badge badge-quotation">📝 QUOTATION READY</span></td>
+                        <td>Mar 26, 11:00 AM</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-start">View</button>
+                                <button class="btn-small btn-quotation" onclick="goToQuotation('WO003')">Submit Quotation</button>
                             </div>
                         </td>
                     </tr>
+
+                    <!-- QUOTATION SUBMITTED - Waiting Approval -->
                     <tr>
-                        <td>#WO004</td>
+                        <td><strong>#WO004</strong></td>
                         <td>Muhammad Ali</td>
-                        <td>Engine Inspection</td>
+                        <td>Full Vehicle Inspection</td>
                         <td>Petronas Perdana (2018)</td>
-                        <td><span class="badge badge-pending-review">Pending Review</span></td>
-                        <td>Mar 23, 3:00 PM</td>
+                        <td><span class="badge badge-quotation">⏳ WAITING APPROVAL</span></td>
+                        <td>Mar 27, 3:00 PM</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-start">View</button>
+                                <button class="btn-small btn-view" onclick="viewQuotation('WO004')">View Quotation</button>
                             </div>
                         </td>
                     </tr>
+
+                    <!-- APPROVED - Ready to Service -->
                     <tr>
-                        <td>#WO005</td>
+                        <td><strong>#WO005</strong></td>
                         <td>Zahra Rahman</td>
                         <td>General Maintenance</td>
                         <td>BMW 3 Series (2021)</td>
-                        <td><span class="badge badge-new">New</span></td>
-                        <td>Mar 26, 9:00 AM</td>
+                        <td><span class="badge badge-approved">✅ APPROVED</span></td>
+                        <td>Mar 28, 9:00 AM</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-start">Start</button>
+                                <button class="btn-small btn-complete" onclick="startService('WO005')">Start Service</button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- IN SERVICE - Performing Service -->
+                    <tr>
+                        <td><strong>#WO006</strong></td>
+                        <td>Hassan Ibrahim</td>
+                        <td>Battery Replacement</td>
+                        <td>Toyota Corolla (2018)</td>
+                        <td><span class="badge badge-in-service">🔧 IN SERVICE</span></td>
+                        <td>Mar 24, 1:00 PM</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-small btn-complete" onclick="completeService('WO006')">Mark Complete</button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- COMPLETED - Service Done -->
+                    <tr>
+                        <td><strong>#WO007</strong></td>
+                        <td>Fatima Karim</td>
+                        <td>Spark Plugs & Diagnostics</td>
+                        <td>Mazda CX-5 (2020)</td>
+                        <td><span class="badge badge-completed">✅ COMPLETED</span></td>
+                        <td>Mar 22, 11:00 AM</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-small btn-view">View Details</button>
                             </div>
                         </td>
                     </tr>
@@ -278,6 +366,32 @@
         </div>
     </div>
 </div>
+
+<script>
+    function startInspection(orderId) {
+        alert('🔍 Starting inspection for ' + orderId);
+        window.location.href = 'CreateQuotation.jsp?id=' + orderId;
+    }
+
+    function goToQuotation(orderId) {
+        window.location.href = 'CreateQuotation.jsp?id=' + orderId;
+    }
+
+    function viewQuotation(orderId) {
+        alert('View quotation for ' + orderId);
+    }
+
+    function startService(orderId) {
+        alert('🔧 Service starting for ' + orderId);
+    }
+
+    function completeService(orderId) {
+        if (confirm('Mark this service as COMPLETED?')) {
+            alert('✅ Service marked complete! Waiting for payment.');
+            location.reload();
+        }
+    }
+</script>
 
 </body>
 </html>

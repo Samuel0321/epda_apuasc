@@ -73,7 +73,7 @@ body {
 /* MAIN */
 .main {
     margin-left: 260px;
-    padding: 30px 40px;
+    padding: 20px 30px;
     min-height: 100vh;
     width: calc(100% - 260px);
     box-sizing: border-box;
