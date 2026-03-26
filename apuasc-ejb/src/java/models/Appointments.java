@@ -34,6 +34,13 @@ public class Appointments implements Serializable {
     private User technician;
 
 //    private Integer Customer_id;
+    //    private Integer Technician_id ;
+    private Date Appointment_date;
+    private LocalDateTime Appointment_time;
+    private String Status;
+    private Integer Total_amount; //record purposes to have a accurate profit report
+    private String Technician_notes;
+    
     public Appointments(Integer id, User customer, User technician, Date Appointment_date, LocalDateTime Appointment_time, String Status, Integer Total_amount, String Technician_notes) {
         this.id = id;
         this.customer = customer;
@@ -52,12 +59,6 @@ public class Appointments implements Serializable {
     public void setStatus(String Status) {
         this.Status = Status;
     }
-//    private Integer Technician_id ;
-    private Date Appointment_date;
-    private LocalDateTime Appointment_time;
-    private String Status;
-    private Integer Total_amount; //record purposes to have a accurate profit report
-    private String Technician_notes;
 
     public Appointments() {
     }
