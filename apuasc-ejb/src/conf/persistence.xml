@@ -3,6 +3,7 @@
   <persistence-unit name="apuasc-ejbPU" transaction-type="JTA">
     <jta-data-source>jdbc/apuasc</jta-data-source>
     <class>model.UsersEntity</class>
+    <class>model.Appointments</class>
     <exclude-unlisted-classes>false</exclude-unlisted-classes>
     <properties>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
