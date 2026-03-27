@@ -4,6 +4,10 @@
     <jta-data-source>jdbc/apuasc</jta-data-source>
     <class>model.UsersEntity</class>
     <class>model.Appointments</class>
+    <class>modelmodels.Appointment_service</class>
+    <class>models.Comments</class>
+    <class>modmodels.Feedbacks</class>
+    <class>modelsmodels.Services</class>
     <exclude-unlisted-classes>false</exclude-unlisted-classes>
     <properties>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
