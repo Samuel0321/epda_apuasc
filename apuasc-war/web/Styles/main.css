@@ -94,10 +94,34 @@ body {
     gap: 20px;
 }
 
+.bell {
+    text-decoration: none;
+    color: #64748b;
+    font-size: 18px;
+    transition: color 0.2s ease;
+}
+
+.bell:hover {
+    color: #1e293b;
+}
+
 .profile {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.profile-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: #1e293b;
+    transition: color 0.2s ease;
+}
+
+.profile-link:hover {
+    color: #2563eb;
 }
 
 .avatar {
@@ -116,6 +140,12 @@ body {
 .topbar-left {
     font-size: 13px;
     color: #64748b;
+}
+
+.user-info .name {
+    font-size: 14px;
+    font-weight: 600;
+    color: inherit;
 }
 
 /* USER */
@@ -201,17 +231,28 @@ body {
 
 /* STATUS */
 .status {
-    padding: 5px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 128px;
+    padding: 6px 14px;
     border-radius: 20px;
     font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    background: #e2e8f0;
+    color: #334155;
 }
 
 .waiting {
-    background: #fde68a;
+    background: #e2e8f0;
+    color: #334155;
 }
 
 .service {
-    background: #93c5fd;
+    background: #dbeafe;
+    color: #1d4ed8;
 }
 
 .sub {

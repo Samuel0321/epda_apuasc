@@ -1,11 +1,78 @@
-<%--
+﻿<%--
     Document   : AssignTechnician
     Created on : Mar 25, 2026
     Author     : pinju
     Description: Receptionist assigns a technician to a pending appointment
 --%>
 
+<%@page import="java.util.List,java.util.Arrays,java.util.LinkedHashMap,java.util.Map,java.time.format.DateTimeFormatter,models.UsersEntity,models.UsersEntityFacade,models.Appointments,models.AppointmentsFacade,models.AppointmentService,models.AppointmentServiceFacade,models.ServiceEntity,models.ServiceEntityFacade,utils.EjbLookup"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%
+    UsersEntityFacade usersFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+    AppointmentsFacade appointmentsFacade = EjbLookup.lookup(AppointmentsFacade.class, "AppointmentsFacade");
+    AppointmentServiceFacade aptServiceFacade = EjbLookup.lookup(AppointmentServiceFacade.class, "AppointmentServiceFacade");
+    ServiceEntityFacade serviceFacade = EjbLookup.lookup(ServiceEntityFacade.class, "ServiceEntityFacade");
+    
+    List<UsersEntity> technicians = usersFacade.findByRoles(Arrays.asList("technician"));
+    
+    String appointmentIdStr = request.getParameter("id");
+    Appointments appointment = null;
+    if (appointmentIdStr != null && !appointmentIdStr.isEmpty()) {
+        try {
+            Integer id = Integer.parseInt(appointmentIdStr);
+            appointment = appointmentsFacade.find(id);
+        } catch (NumberFormatException e) {
+            // handle error
+        }
+    }
+
+    Integer requestedDurationHours = 1;
+    String serviceName = "-";
+    if (appointment != null) {
+        requestedDurationHours = appointmentsFacade.estimateReservedDurationHours(appointment);
+        List<AppointmentService> links = aptServiceFacade.findByAppointmentId(appointment.getId());
+        if (links != null && !links.isEmpty()) {
+            ServiceEntity s = serviceFacade.find(links.get(0).getService_id());
+            if (s != null) {
+                serviceName = s.getService_name();
+            }
+        }
+    }
+
+    if ("POST".equalsIgnoreCase(request.getMethod()) && appointment != null) {
+        String techIdStr = request.getParameter("technician");
+        String specialNotes = request.getParameter("notes");
+        if (techIdStr != null && !techIdStr.isEmpty()) {
+            Integer technicianId = Integer.parseInt(techIdStr);
+            if (appointmentsFacade.isPastAppointmentSlot(appointment.getAppointment_date(), appointment.getAppointment_time())) {
+                response.sendRedirect("AssignTechnician.jsp?id=" + appointment.getId() + "&error=PastDateTime");
+                return;
+            }
+            if (appointmentsFacade.hasTechnicianConflict(technicianId, appointment.getAppointment_date(),
+                    appointment.getAppointment_time(), requestedDurationHours, appointment.getId())) {
+                response.sendRedirect("AssignTechnician.jsp?id=" + appointment.getId() + "&error=TechnicianBusy");
+                return;
+            }
+            appointment.setTechnician_id(technicianId);
+            appointment.setStatus("ASSIGNED");
+            if (specialNotes != null && !specialNotes.trim().isEmpty()) {
+                appointment.setTechnician_notes(specialNotes);
+            }
+            appointmentsFacade.edit(appointment);
+            response.sendRedirect("Appointments.jsp?assigned=1");
+            return;
+        }
+    }
+
+    Map<Integer, Boolean> technicianAvailability = new LinkedHashMap<>();
+    if (appointment != null) {
+        for (UsersEntity tech : technicians) {
+            boolean busy = appointmentsFacade.hasTechnicianConflict(tech.getId(), appointment.getAppointment_date(),
+                    appointment.getAppointment_time(), requestedDurationHours, appointment.getId());
+            technicianAvailability.put(tech.getId(), !busy);
+        }
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -48,12 +115,6 @@
             outline: none;
             border-color: #2563eb;
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
         }
 
         .info-box {
@@ -107,21 +168,6 @@
         .technician-name {
             font-weight: 600;
             color: #1e293b;
-        }
-
-        .technician-specialty {
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        .specialist-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            background: #d1fae5;
-            color: #065f46;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-right: 5px;
         }
 
         .form-actions {
@@ -186,29 +232,13 @@
 <body>
 
 <div class="layout">
-    <!-- Sidebar -->
     <jsp:include page="../../Component/Sidebar.jsp" />
 
-    <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; ASSIGN TECHNICIAN
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">R</div>
-                    <div class="user-info">
-                        <div class="name">Receptionist</div>
-                        <div class="email">receptionist@autofix.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="ASSIGN TECHNICIAN" />
+        </jsp:include>
 
-        <!-- HEADER -->
         <div class="header-row">
             <div class="header-text">
                 <h1>Assign Technician to Appointment</h1>
@@ -216,99 +246,104 @@
             </div>
         </div>
 
-        <!-- FORM -->
         <div class="form-container">
-            <!-- Appointment Details -->
+            <% String error = request.getParameter("error"); %>
+            <% if (error != null) { %>
+                <div class="info-box" style="background:#fee2e2;color:#991b1b;">
+                    <%
+                        if ("PastDateTime".equals(error)) {
+                            out.print("This appointment slot is already in the past, so it cannot be assigned anymore.");
+                        } else if ("TechnicianBusy".equals(error)) {
+                            out.print("That technician is already busy during this appointment window. Please choose an available technician.");
+                        } else {
+                            out.print("Technician assignment could not be completed.");
+                        }
+                    %>
+                </div>
+            <% } %>
+            <% if (appointment != null) { 
+                String formattedDate = appointment.getAppointment_date() != null ? appointment.getAppointment_date().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) : "-";
+                String formattedTime = appointment.getAppointment_time() != null ? appointment.getAppointment_time().format(DateTimeFormatter.ofPattern("hh:mm a")) : "-";
+                
+                String customerName = "-";
+                if (appointment.getCustomer_id() != null) {
+                    UsersEntity cust = usersFacade.find(appointment.getCustomer_id());
+                    if (cust != null) customerName = cust.getName();
+                }
+
+                String notes = appointment.getCustomer_notes() != null ? appointment.getCustomer_notes() : "-";
+            %>
             <div class="appointment-details">
                 <div class="detail-row">
                     <div class="detail-label">Appointment ID:</div>
-                    <div class="detail-value">#APT001</div>
+                    <div class="detail-value">#APT<%= String.format("%03d", appointment.getId()) %></div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Customer:</div>
-                    <div class="detail-value">Ahmad Faisal</div>
+                    <div class="detail-value"><%= customerName %></div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Service Type:</div>
-                    <div class="detail-value">Normal Service</div>
+                    <div class="detail-value"><%= serviceName %></div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Issue:</div>
-                    <div class="detail-value">Engine loud noise, vibrations</div>
+                    <div class="detail-value"><%= notes %></div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Date/Time:</div>
-                    <div class="detail-value">Mar 25, 2026 - 10:00 AM</div>
+                    <div class="detail-value"><%= formattedDate %> - <%= formattedTime %></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Reserved Duration:</div>
+                    <div class="detail-value"><%= requestedDurationHours %> hour(s)</div>
                 </div>
             </div>
 
-            <form method="POST" action="#">
-                <!-- Technician Selection -->
+            <form method="POST">
                 <div class="form-group">
                     <label for="technician">Select Technician *</label>
                     <div class="info-box">
                         <strong>Available Technicians:</strong>
-                        Showing technicians available on the selected date
+                        Only technicians without overlapping work during this service window can be assigned.
                     </div>
                     
                     <div class="technician-list">
-                        <!-- Technician 1 -->
+                        <% for (UsersEntity tech : technicians) { %>
                         <div class="technician-item">
                             <div style="display: flex; align-items: center; flex: 1;">
-                                <input type="radio" name="technician" id="tech1" value="1" required>
+                                <input type="radio" name="technician" id="tech<%= tech.getId() %>" value="<%= tech.getId() %>" <%= Boolean.TRUE.equals(technicianAvailability.get(tech.getId())) ? "" : "disabled" %> required>
                                 <div class="technician-info">
-                                    <div class="technician-name">John Smith</div>
+                                    <div class="technician-name"><%= tech.getName() %></div>
+                                    <div class="availability"><%= Boolean.TRUE.equals(technicianAvailability.get(tech.getId())) ? "Available for this slot" : "Busy during this slot" %></div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Technician 2 -->
-                        <div class="technician-item">
-                            <div style="display: flex; align-items: center; flex: 1;">
-                                <input type="radio" name="technician" id="tech2" value="2">
-                                <div class="technician-info">
-                                    <div class="technician-name">Ahmad Hassan</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Technician 3 -->
-                        <div class="technician-item">
-                            <div style="display: flex; align-items: center; flex: 1;">
-                                <input type="radio" name="technician" id="tech3" value="3">
-                                <div class="technician-info">
-                                    <div class="technician-name">Nurul Amin</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Technician 4 -->
-                        <div class="technician-item">
-                            <div style="display: flex; align-items: center; flex: 1;">
-                                <input type="radio" name="technician" id="tech4" value="4">
-                                <div class="technician-info">
-                                    <div class="technician-name">Hassan Ibrahim</div>
-                                </div>
-                            </div>
-                        </div>
+                        <% } %>
                     </div>
                 </div>
 
-                <!-- Notes -->
                 <div class="form-group">
                     <label for="notes">Special Notes/Instructions (Optional)</label>
                     <textarea id="notes" name="notes" rows="4" placeholder="Add any special instructions for the technician..."></textarea>
                 </div>
 
-                <!-- Form Actions -->
                 <div class="form-actions">
                     <button type="submit" class="btn-submit">Assign Technician</button>
                     <button type="button" class="btn-cancel" onclick="window.location.href='Appointments.jsp'">Cancel</button>
                 </div>
             </form>
+            <% } else { %>
+            <div class="appointment-details">
+                <p>Appointment details not found.</p>
+            </div>
+            <% } %>
         </div>
     </div>
 </div>
 
 </body>
 </html>
+
+
+

@@ -1,138 +1,85 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package controller;
 
 import jakarta.ejb.EJB;
-import java.io.IOException;
-import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import models.UsersEntityFacade;
-import models.UsersEntity;
-import utils.hashPassword;
-import utils.SidebarService;
+import java.io.IOException;
 import java.util.List;
+import models.UsersEntity;
+import models.UsersEntityFacade;
 import utils.NavItem;
+import utils.SidebarService;
+import utils.hashPassword;
 
 public class LoginServlet extends HttpServlet {
-    
+
     @EJB
-    private UsersEntityFacade userFacade; 
+    private UsersEntityFacade userFacade;
 
-    /**
-     * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
-     * methods.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet loginServlet</title>");
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>Servlet loginServlet at " + request.getContextPath() + "</h1>");
-            out.println("</body>");
-            out.println("</html>");
-        }
-    }
-
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
-    /**
-     * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        processRequest(request, response);
+        request.getRequestDispatcher("/loginjsp.jsp").forward(request, response);
     }
 
-    /**
-     * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-//        processRequest(request, response);
+        String email = trim(request.getParameter("email")).toLowerCase();
+        String password = trim(request.getParameter("password"));
 
-        String email = request.getParameter("email");
-        String password = request.getParameter("password");
+        if (email.isEmpty() || password.isEmpty()) {
+            request.setAttribute("errorMessage", "Email and password are required.");
+            request.getRequestDispatcher("/loginjsp.jsp").forward(request, response);
+            return;
+        }
 
-
-        // Lookup user via facade
         UsersEntity user = userFacade.findByEmail(email);
-
         String hashedPassword = hashPassword.hashPassword(password);
 
-        if (user != null && user.getPassword().equals(hashedPassword)) {
-            // ⚠️ Replace with hashed password check in production
-            HttpSession session = request.getSession();
-            session.setAttribute("user", user);
+        if (user == null || user.getPassword() == null || !user.getPassword().equals(hashedPassword)) {
+            request.setAttribute("errorMessage", "Invalid email or password.");
+            request.getRequestDispatcher("/loginjsp.jsp").forward(request, response);
+            return;
+        }
 
-            String userRole = user.getRole();
+        HttpSession session = request.getSession(true);
+        session.setAttribute("user", user);
 
-            // Get sidebar menu based on role
-            List<NavItem> menu = SidebarService.getMenu(userRole);
-            session.setAttribute("menu", menu);
+        List<NavItem> menu = SidebarService.getMenu(user.getRole());
+        session.setAttribute("menu", menu);
 
-            if (null != userRole)switch (userRole) {
-                case "receptionist":
-                case "counter_staff":
-                    response.sendRedirect(request.getContextPath() + "/ReceptionistDashboardServlet");
-                    break;
-                case "manager":
-                case "super_admin":
-                case "admin":
-                    response.sendRedirect(request.getContextPath() + "/ManagerDashboardServlet");
-                    break;
-                case "technician":
-                    response.sendRedirect(request.getContextPath() + "/TechnicianDashboardServlet");
-                    break;
-                case "customer":
-                    response.sendRedirect(request.getContextPath() + "/CustomerDashboardServlet");
-                    break;
-                default:
-                    response.sendRedirect(request.getContextPath() + "/Dashboard/AdminDashboard.jsp");
-                    break;
-            }
+        response.sendRedirect(request.getContextPath() + getDashboardPath(user.getRole()));
+    }
 
-        } else {
-            request.setAttribute("errorMessage", "Invalid username or password");
-            request.getRequestDispatcher("loginjsp.jsp").forward(request, response);
+    private String getDashboardPath(String role) {
+        if (role == null) {
+            return "/loginjsp.jsp";
+        }
+
+        String normalizedRole = role.trim().toLowerCase();
+        switch (normalizedRole) {
+            case "receptionist":
+            case "counter_staff":
+                return "/Dashboard/ReceptionistDashboard.jsp";
+            case "technician":
+                return "/Dashboard/TechnicianDashboard.jsp";
+            case "manager":
+            case "super_admin":
+                return "/Dashboard/ManagerDashboard.jsp";
+            case "admin":
+                return "/Dashboard/ManagerDashboard.jsp";
+            case "customer":
+                return "/Dashboard/CustomerDashboard.jsp";
+            default:
+                return "/loginjsp.jsp";
         }
     }
 
-    /**
-     * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
-     */
-    @Override
-    public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
-
+    private String trim(String value) {
+        return value == null ? "" : value.trim();
+    }
 }

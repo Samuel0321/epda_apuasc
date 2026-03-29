@@ -5,7 +5,23 @@
 --%>
 
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@page import="java.util.List,models.UsersEntity,utils.CountryLoader"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%
+    List<CountryLoader.Country> countries = CountryLoader.loadCountries();
+    request.setAttribute("countries", countries);
+    UsersEntity currentUser = session != null && session.getAttribute("user") instanceof UsersEntity
+            ? (UsersEntity) session.getAttribute("user")
+            : null;
+    boolean managerSession = currentUser != null
+            && currentUser.getRole() != null
+            && "manager".equalsIgnoreCase(currentUser.getRole());
+    boolean managerHasAccess = managerSession
+            && currentUser.getHave_Manager_access() != null
+            && currentUser.getHave_Manager_access() == 1;
+    boolean managerRegistration = Boolean.TRUE.equals(request.getAttribute("managerRegistration")) || managerSession;
+    boolean canCreateManagerAccounts = Boolean.TRUE.equals(request.getAttribute("canCreateManagerAccounts")) || managerHasAccess;
+%>
 <!DOCTYPE html>
 <html>
     <head>
@@ -169,16 +185,101 @@
             .login-link a:hover {
                 text-decoration: underline;
             }
+            
+            .alert {
+                padding: 12px 14px;
+                border-radius: 10px;
+                margin-bottom: 18px;
+                font-size: 14px;
+            }
+            
+            .alert-error {
+                background: #fee2e2;
+                color: #991b1b;
+            }
+            
+            .helper-note {
+                color: #64748b;
+                font-size: 13px;
+                margin-top: 6px;
+            }
+
+            .hero-bar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 16px;
+                margin-bottom: 24px;
+                flex-wrap: wrap;
+                padding: 18px 20px;
+                border-radius: 16px;
+                background: linear-gradient(135deg, #eff6ff, #ffffff);
+                border: 1px solid #dbeafe;
+            }
+
+            .hero-copy strong {
+                display: block;
+                font-size: 16px;
+                margin-bottom: 6px;
+                color: #1e3a8a;
+            }
+
+            .hero-copy span {
+                color: #64748b;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+
+            .hero-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 10px 14px;
+                border-radius: 999px;
+                background: #dbeafe;
+                color: #1d4ed8;
+                font-size: 13px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+            @media (max-width: 820px) {
+                .hero-bar,
+                .form-grid,
+                .form-actions {
+                    grid-template-columns: 1fr;
+                }
+            }
         </style>
     </head> 
     <body>
         <div class="container">
             <div class="page-header">
                 <h1>🔧 AutoFix Pro</h1>
-                <p>Create Your Account</p>
+                <p><%= managerRegistration ? "Register Staff Account" : "Create Your Account" %></p>
             </div>
             
             <div class="form-wrapper">
+                <% if (request.getAttribute("errorMessage") != null) { %>
+                <div class="alert alert-error"><%= request.getAttribute("errorMessage") %></div>
+                <% } %>
+                <div class="hero-bar">
+                    <div class="hero-copy">
+                        <strong><%= managerRegistration ? "Role access for this account" : "Customer self-registration" %></strong>
+                        <span>
+                            <%= managerRegistration
+                                    ? (canCreateManagerAccounts
+                                        ? "You can create receptionist, counter staff, technician, and manager accounts."
+                                        : "You can create receptionist, counter staff, and technician accounts.")
+                                    : "Public registration only creates customer accounts." %>
+                        </span>
+                    </div>
+                    <div class="hero-badge">
+                        <%= managerRegistration
+                                ? (canCreateManagerAccounts ? "Manager access enabled" : "Standard manager")
+                                : "Customer only" %>
+                    </div>
+                </div>
                 <form action="RegisterServlet" method="post">
                     <div class="form-grid">
                         <!-- Name -->
@@ -251,29 +352,43 @@
                             <label for="role">Account Type *</label>
                             <select id="role" name="role" onchange="setAccessValues()" required>
                                 <option value="">Select Account Type</option>
+                                <% if (!managerRegistration) { %>
                                 <option value="customer">Customer</option>
+                                <% } else { %>
                                 <option value="technician">Technician</option>
-                                <option value="counter_staff">Counter Staff</option>
+                                <option value="receptionist">Receptionist</option>
+                                <% if (managerRegistration && canCreateManagerAccounts) { %>
                                 <option value="manager">Manager</option>
-                                <option value="super_admin">Super Administrator</option>
+                                <% } %>
+                                <% } %>
                             </select>
+                            <div class="helper-note">
+                                <% if (managerRegistration) { %>
+                                Managers with manager access can register managers, receptionists, and technicians. Other managers can register receptionists and technicians only.
+                                <% } else { %>
+                                Public registration is limited to customer accounts.
+                                <% } %>
+                            </div>
                         </div>
 
                         <!-- Hidden fields -->
                         <input type="hidden" id="country_code" name="country_code">
                         <input type="hidden" id="manager_access" name="manager_access" value="0">
-                        <input type="hidden" id="is_super_admin" name="is_super_admin" value="0">
                     </div>
 
                     <!-- Form Actions -->
                     <div class="form-actions">
                         <button type="submit" class="btn-submit">Create Account</button>
-                        <button type="button" class="btn-cancel" onclick="window.location.href='loginjsp.jsp'">Back to Login</button>
+                        <button type="button" class="btn-cancel" onclick="window.location.href='<%= managerRegistration ? "Pages/Manager/ManageUsers.jsp" : "loginjsp.jsp" %>'"><%= managerRegistration ? "Back to Directory" : "Back to Login" %></button>
                     </div>
                 </form>
                 
                 <div class="login-link">
+                    <% if (managerRegistration) { %>
+                    <a href="Pages/Manager/ManageUsers.jsp">Back to User Directory</a>
+                    <% } else { %>
                     Already have an account? <a href="loginjsp.jsp">Sign in here</a>
+                    <% } %>
                 </div>
             </div>
         </div>
@@ -322,17 +437,11 @@
             function setAccessValues() {
                 const role = document.getElementById("role").value;
                 const managerAccess = document.getElementById("manager_access");
-                const superAdmin = document.getElementById("is_super_admin");
 
-                if (role === "super_admin") {
-                    managerAccess.value = "1";
-                    superAdmin.value = "1";
-                } else if (role === "manager") {
-                    managerAccess.value = "1";
-                    superAdmin.value = "0";
+                if (role === "manager") {
+                    managerAccess.value = "0";
                 } else {
                     managerAccess.value = "0";
-                    superAdmin.value = "0";
                 }
             }
         </script>

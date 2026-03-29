@@ -1,234 +1,294 @@
-<%--Document   : Reports
-    Created on : Mar 24, 2026
-    Author     : pinju
---%>
+<%@page import="java.text.NumberFormat,java.util.List,java.util.Locale,models.PaymentRecord,models.PaymentRecordFacade,models.ServiceEntity,models.ServiceEntityFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
+<%
+    UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
+    if (currentUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
+    String currentRole = currentUser.getRole() == null ? "" : currentUser.getRole().trim().toLowerCase();
+    if (!("manager".equals(currentRole) || "admin".equals(currentRole) || "super_admin".equals(currentRole))) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
 
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
+    NumberFormat currency = NumberFormat.getCurrencyInstance(new Locale("ms", "MY"));
+    long totalStaff;
+    long totalCustomers;
+    long activeServices;
+    String totalCatalogValue;
+    String paidRevenue;
+    String pendingRevenue;
+    List<Object[]> roleBreakdown;
+    List<ServiceEntity> services;
+    List<PaymentRecord> payments;
+
+    if (request.getAttribute("totalStaff") != null) {
+        totalStaff = (Long) request.getAttribute("totalStaff");
+        totalCustomers = (Long) request.getAttribute("totalCustomers");
+        activeServices = (Long) request.getAttribute("activeServices");
+        totalCatalogValue = (String) request.getAttribute("totalCatalogValue");
+        paidRevenue = (String) request.getAttribute("paidRevenue");
+        pendingRevenue = (String) request.getAttribute("pendingRevenue");
+        roleBreakdown = (List<Object[]>) request.getAttribute("roleBreakdown");
+        services = (List<ServiceEntity>) request.getAttribute("services");
+        payments = (List<PaymentRecord>) request.getAttribute("payments");
+    } else {
+        UsersEntityFacade userFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+        ServiceEntityFacade serviceFacade = EjbLookup.lookup(ServiceEntityFacade.class, "ServiceEntityFacade");
+        PaymentRecordFacade paymentRecordFacade = EjbLookup.lookup(PaymentRecordFacade.class, "PaymentRecordFacade");
+        totalStaff = userFacade.countNonCustomerUsers();
+        totalCustomers = userFacade.countByRole("customer");
+        activeServices = serviceFacade.countActive();
+        totalCatalogValue = currency.format(serviceFacade.totalActivePrice());
+        paidRevenue = currency.format(paymentRecordFacade.sumByStatus("paid"));
+        pendingRevenue = currency.format(paymentRecordFacade.sumByStatus("pending"));
+        roleBreakdown = userFacade.countUsersGroupedByRole();
+        services = serviceFacade.findAllOrdered();
+        payments = paymentRecordFacade.findAllOrdered();
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
     <title>Reports</title>
     <link rel="stylesheet" href="../../Styles/main.css">
     <style>
-        .report-container {
-            background: white;
-            padding: 20px;
-            border-radius: 14px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
-
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .report-stats {
+        .stats-grid,
+        .report-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 20px;
         }
 
-        .stat-card {
+        .stats-grid {
+            grid-template-columns: repeat(4, 1fr);
+            margin-bottom: 24px;
+        }
+
+        .report-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .report-card {
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        }
+
+        .report-card h3 {
+            margin: 0 0 8px;
+        }
+
+        .report-card .sub {
+            color: #64748b;
+            margin-bottom: 18px;
         }
 
         .stat-label {
-            font-size: 12px;
+            font-size: 13px;
             color: #64748b;
             margin-bottom: 8px;
         }
 
         .stat-value {
-            font-size: 28px;
+            font-size: 30px;
             font-weight: 700;
-            color: #1e293b;
+            color: #0f172a;
         }
 
-        .stat-change {
-            font-size: 12px;
-            color: #10b981;
-            margin-top: 5px;
+        .stat-note {
+            margin-top: 8px;
+            color: #64748b;
+            font-size: 13px;
         }
 
-        .chart-area {
-            position: relative;
-            width: 100%;
-            height: 300px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
+        .stack-list {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 18px;
+            flex-direction: column;
+            gap: 14px;
         }
 
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            padding: 8px 14px;
+        .stack-item {
+            padding: 14px;
+            border-radius: 14px;
+            background: #f8fafc;
             border: 1px solid #e2e8f0;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
         }
 
-        .filter-btn:hover,
-        .filter-btn.active {
-            background: #2563eb;
-            color: white;
-            border-color: #2563eb;
+        .stack-item strong {
+            display: block;
+            margin-bottom: 4px;
         }
 
-        .btn-export {
-            padding: 10px 14px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
+        table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .btn-export:hover {
-            background: #1d4ed8;
+        th, td {
+            padding: 12px 10px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-paid {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        @media (max-width: 1100px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .report-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 680px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
-
 <body>
-
 <div class="layout">
-    <!-- Sidebar -->
     <jsp:include page="../../Component/Sidebar.jsp" />
 
-    <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; REPORTS
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">M</div>
-                    <div class="user-info">
-                        <div class="name">Manager</div>
-                        <div class="email">manager@autofix.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="REPORTS" />
+        </jsp:include>
 
-        <!-- HEADER -->
         <div class="header-row">
             <div class="header-text">
-                <h1>System Reports</h1>
-                <p>View analytics and business reports</p>
-            </div>
-            <div class="actions">
-                <button class="btn-export">📥 Export Report</button>
+                <h1>Reports</h1>
+                <p>Database-driven statistics for staff, service pricing, and payments.</p>
             </div>
         </div>
 
-        <!-- FILTERS -->
-        <div class="filters">
-            <button class="filter-btn active">This Month</button>
-            <button class="filter-btn">Last Month</button>
-            <button class="filter-btn">This Year</button>
-            <button class="filter-btn">Custom Range</button>
-        </div>
-
-        <!-- KEY STATISTICS -->
-        <div class="report-stats">
-            <div class="stat-card">
-                <div class="stat-label">Total Appointments</div>
-                <div class="stat-value">245</div>
-                <div class="stat-change">↑ 12% from last month</div>
+        <div class="stats-grid">
+            <div class="report-card">
+                <div class="stat-label">Total Staff</div>
+                <div class="stat-value"><%= totalStaff %></div>
+                <div class="stat-note">Non-customer users in the system</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Revenue</div>
-                <div class="stat-value">RM 45,320</div>
-                <div class="stat-change">↑ 8% from last month</div>
+            <div class="report-card">
+                <div class="stat-label">Customers</div>
+                <div class="stat-value"><%= totalCustomers %></div>
+                <div class="stat-note">Registered customer accounts</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Completed Services</div>
-                <div class="stat-value">212</div>
-                <div class="stat-change">↑ 5% completion rate</div>
+            <div class="report-card">
+                <div class="stat-label">Active Service Pricing</div>
+                <div class="stat-value"><%= activeServices %></div>
+                <div class="stat-note">Catalog value <%= totalCatalogValue %></div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Customer Satisfaction</div>
-                <div class="stat-value">4.8/5</div>
-                <div class="stat-change">Based on 89 reviews</div>
+            <div class="report-card">
+                <div class="stat-label">Payment Summary</div>
+                <div class="stat-value"><%= paidRevenue %></div>
+                <div class="stat-note">Pending amount <%= pendingRevenue %></div>
             </div>
         </div>
 
-        <!-- APPOINTMENTS CHART -->
-        <div class="report-container">
-            <h3>Appointments Trend</h3>
-            <div class="chart-area">
-                📊 Chart visualization would appear here
-            </div>
-        </div>
-
-        <!-- REVENUE CHART -->
-        <div class="report-container">
-            <h3>Revenue Overview</h3>
-            <div class="chart-area">
-                📈 Revenue chart would appear here
-            </div>
-        </div>
-
-        <!-- SERVICE POPULAR -->
-        <div class="report-container">
-            <h3>Most Popular Services</h3>
-            <div style="padding: 20px 0;">
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span>Oil Change</span>
-                        <span>45</span>
+        <div class="report-grid">
+            <div class="report-card">
+                <h3>User Role Distribution</h3>
+                <div class="sub">Current role counts from `UsersEntity`</div>
+                <div class="stack-list">
+                    <% for (Object[] roleRow : roleBreakdown) { %>
+                    <div class="stack-item">
+                        <div>
+                            <strong><%= roleRow[0] %></strong>
+                            <span>Accounts in this role</span>
+                        </div>
+                        <strong><%= roleRow[1] %></strong>
                     </div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px;">
-                        <div style="background: #2563eb; height: 8px; border-radius: 4px; width: 90%;"></div>
-                    </div>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span>Brake Service</span>
-                        <span>38</span>
-                    </div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px;">
-                        <div style="background: #10b981; height: 8px; border-radius: 4px; width: 76%;"></div>
-                    </div>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span>Tire Service</span>
-                        <span>32</span>
-                    </div>
-                    <div style="background: #e5e7eb; height: 8px; border-radius: 4px;">
-                        <div style="background: #f59e0b; height: 8px; border-radius: 4px; width: 64%;"></div>
-                    </div>
+                    <% } %>
                 </div>
             </div>
+
+            <div class="report-card">
+                <h3>Service Pricing Overview</h3>
+                <div class="sub">Active and inactive service price records</div>
+                <div class="stack-list">
+                    <% int serviceShown = 0;
+                       for (ServiceEntity service : services) {
+                           if (serviceShown >= 3) {
+                               break;
+                           }
+                           serviceShown++;
+                    %>
+                    <div class="stack-item">
+                        <div>
+                            <strong><%= service.getService_name() %></strong>
+                            <span><%= service.getDescription() == null || service.getDescription().isEmpty() ? "No description" : service.getDescription() %></span>
+                        </div>
+                        <div>
+                            <strong><%= currency.format(service.getPrice()) %></strong>
+                            <span><%= service.getActive() != null && service.getActive() == 1 ? "Active" : "Inactive" %></span>
+                        </div>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-card" style="margin-top: 24px;">
+            <h3>Payment Activity</h3>
+            <div class="sub">Latest payment records used for reporting totals</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Invoice</th>
+                        <th>Customer</th>
+                        <th>Service</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Receipt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (PaymentRecord payment : payments) {
+                        String statusClass = "paid".equalsIgnoreCase(payment.getStatus()) ? "status-paid" : "status-pending";
+                    %>
+                    <tr>
+                        <td><%= payment.getInvoice_number() %></td>
+                        <td><%= payment.getCustomer_name() %></td>
+                        <td><%= payment.getService_name() %></td>
+                        <td><%= currency.format(payment.getAmount()) %></td>
+                        <td><span class="status-pill <%= statusClass %>"><%= payment.getStatus() %></span></td>
+                        <td><%= payment.getReceipt_number() %></td>
+                    </tr>
+                    <% } %>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
-
 </body>
 </html>

@@ -1,323 +1,194 @@
-<%--
-    Document   : ServiceHistory
-    Created on : Mar 24, 2026
-    Author     : pinju
---%>
+<%@page import="java.math.BigDecimal,java.util.ArrayList,java.util.Arrays,java.util.HashMap,java.util.List,java.util.Map,models.AppointmentService,models.AppointmentServiceFacade,models.Appointments,models.AppointmentsFacade,models.ServiceEntity,models.ServiceEntityFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
+<%
+    UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
+    if (currentUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
 
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
+    UsersEntityFacade userFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+    AppointmentsFacade appointmentsFacade = EjbLookup.lookup(AppointmentsFacade.class, "AppointmentsFacade");
+    AppointmentServiceFacade appointmentServiceFacade = EjbLookup.lookup(AppointmentServiceFacade.class, "AppointmentServiceFacade");
+    ServiceEntityFacade serviceFacade = EjbLookup.lookup(ServiceEntityFacade.class, "ServiceEntityFacade");
+
+    currentUser = userFacade.find(currentUser.getId());
+    session.setAttribute("user", currentUser);
+
+    List<Appointments> serviceHistory = appointmentsFacade.findByCustomerIdAndStatuses(currentUser.getId(), Arrays.asList("COMPLETED", "UNPAID", "PAID"));
+    Map<Integer, String> serviceNames = new HashMap<>();
+    Map<Integer, String> technicianNames = new HashMap<>();
+    Map<Integer, String> technicianNotes = new HashMap<>();
+    Map<Integer, String> customerFeedback = new HashMap<>();
+    BigDecimal totalSpent = BigDecimal.ZERO;
+    for (Appointments appointment : serviceHistory) {
+        List<AppointmentService> links = appointmentServiceFacade.findByAppointmentId(appointment.getAppointment_id());
+        List<String> names = new ArrayList<>();
+        for (AppointmentService link : links) {
+            ServiceEntity service = serviceFacade.find(link.getService_id());
+            if (service != null) {
+                names.add(service.getService_name());
+            }
+        }
+        serviceNames.put(appointment.getAppointment_id(), names.isEmpty() ? "Service Request" : String.join(", ", names));
+        UsersEntity technician = appointment.getTechnician_id() == null ? null : userFacade.find(appointment.getTechnician_id());
+        technicianNames.put(appointment.getAppointment_id(), technician == null ? "Pending assignment" : technician.getName());
+        technicianNotes.put(appointment.getAppointment_id(), appointment.getTechnician_notes() == null || appointment.getTechnician_notes().trim().isEmpty()
+                ? "No technician note yet."
+                : appointment.getTechnician_notes());
+        customerFeedback.put(appointment.getAppointment_id(), appointment.getCustomer_feedback() == null || appointment.getCustomer_feedback().trim().isEmpty()
+                ? "No customer feedback saved yet."
+                : appointment.getCustomer_feedback());
+        if ("PAID".equalsIgnoreCase(appointment.getStatus()) && appointment.getTotal_amount() != null) {
+            totalSpent = totalSpent.add(appointment.getTotal_amount());
+        }
+    }
+    String latestRecord = serviceHistory.isEmpty() ? "-" : String.valueOf(serviceHistory.get(0).getAppointment_date());
+%>
 <!DOCTYPE html>
 <html>
 <head>
     <title>Service History</title>
     <link rel="stylesheet" href="../../Styles/main.css">
     <style>
-        .table-container {
-            background: white;
-            padding: 20px;
-            border-radius: 14px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        .table-container, .modal-card { background:white; padding:22px; border-radius:18px; box-shadow:0 10px 30px rgba(15,23,42,0.06); }
+        .summary-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:20px; }
+        .summary-card { background:white; padding:18px; border-radius:18px; box-shadow:0 10px 30px rgba(15,23,42,0.06); }
+        .summary-label { font-size:13px; color:#64748b; margin-bottom:10px; }
+        .summary-value { font-size:30px; font-weight:700; color:#0f172a; }
+        .search-box { width:100%; padding:10px 12px; border:1px solid #dbe2ea; border-radius:10px; box-sizing:border-box; }
+        table { width:100%; border-collapse:collapse; }
+        th,td { padding:14px 12px; border-bottom:1px solid #e2e8f0; text-align:left; vertical-align:top; }
+        th { font-size:12px; text-transform:uppercase; letter-spacing:0.04em; color:#64748b; }
+        .status-pill {
+            display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600;
+            background:#dbeafe; color:#1d4ed8;
         }
-
-        .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            gap: 10px;
-        }
-
-        .search-box {
-            flex: 1;
-            padding: 10px 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        table thead {
-            background: #f8fafc;
-        }
-
-        table th {
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            color: #1e293b;
-            border-bottom: 2px solid #e2e8f0;
-        }
-
-        table td {
-            padding: 12px;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        table tbody tr:hover {
-            background: #f8fafc;
-        }
-
-        .service-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-            background: #eff6ff;
-            color: #1e40af;
-        }
-
-        .cost {
-            font-weight: 600;
-            color: #1e293b;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-        }
-
-        .btn-small {
-            padding: 6px 10px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .btn-view {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .btn-view:hover {
-            background: #bfdbfe;
-        }
-
-        .btn-invoice {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .btn-invoice:hover {
-            background: #fde68a;
-        }
-
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            padding: 8px 14px;
-            border: 1px solid #e2e8f0;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        .filter-btn:hover,
-        .filter-btn.active {
-            background: #2563eb;
-            color: white;
-            border-color: #2563eb;
-        }
-
-        .summary-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .summary-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .summary-label {
-            font-size: 12px;
-            color: #64748b;
-            margin-bottom: 5px;
-        }
-
-        .summary-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1e293b;
-        }
+        .status-pill.paid { background:#dcfce7; color:#166534; }
+        .status-pill.unpaid { background:#fef3c7; color:#92400e; }
+        .btn-small { padding:8px 10px; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; background:#dbeafe; color:#1d4ed8; }
+        .empty-state { padding:22px; border:1px dashed #cbd5e1; border-radius:14px; color:#64748b; text-align:center; }
+        .modal { display:none; position:fixed; inset:0; background:rgba(15,23,42,0.48); z-index:1000; padding:30px 16px; }
+        .modal.show { display:block; }
+        .modal-card { max-width:760px; margin:0 auto; }
+        .detail-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+        .detail-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:14px; }
+        .detail-card strong { display:block; margin-bottom:6px; }
+        .full-span { grid-column:1 / -1; }
+        @media (max-width: 800px) { .summary-cards,.detail-grid { grid-template-columns:1fr; } }
     </style>
 </head>
-
 <body>
-
 <div class="layout">
-    <!-- Sidebar -->
     <jsp:include page="../../Component/Sidebar.jsp" />
-
-    <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; SERVICE HISTORY
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">C</div>
-                    <div class="user-info">
-                        <div class="name">Customer</div>
-                        <div class="email">customer@email.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="SERVICE HISTORY" />
+        </jsp:include>
 
-        <!-- HEADER -->
         <div class="header-row">
             <div class="header-text">
                 <h1>Service History</h1>
-                <p>View your complete service records</p>
+                <p>Completed appointment records and technician notes saved from your appointment data.</p>
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" onclick="window.location.href='../../Pages/Customer/PaymentHistory.jsp'">Payment History</button>
             </div>
         </div>
 
-        <!-- SUMMARY CARDS -->
         <div class="summary-cards">
-            <div class="summary-card">
-                <div class="summary-label">Total Services</div>
-                <div class="summary-value">12</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">Total Spent</div>
-                <div class="summary-value">RM 2,450</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">Last Service</div>
-                <div class="summary-value">Mar 20</div>
-            </div>
+            <div class="summary-card"><div class="summary-label">Completed Services</div><div class="summary-value"><%= serviceHistory.size() %></div></div>
+            <div class="summary-card"><div class="summary-label">Total Spent</div><div class="summary-value">RM <%= totalSpent %></div></div>
+            <div class="summary-card"><div class="summary-label">Latest Record</div><div class="summary-value"><%= latestRecord %></div></div>
         </div>
 
-        <!-- FILTERS -->
-        <div class="filters">
-            <button class="filter-btn active">All</button>
-            <button class="filter-btn">Maintenance</button>
-            <button class="filter-btn">Repair</button>
-            <button class="filter-btn">Inspection</button>
-        </div>
-
-        <!-- TABLE -->
         <div class="table-container">
-            <div class="table-header">
-                <input type="text" class="search-box" placeholder="Search service history...">
+            <div class="table-header" style="margin-bottom:18px;">
+                <input id="serviceSearch" type="text" class="search-box" placeholder="Search service history by service, technician, or status...">
             </div>
-
-            <table>
+            <% if (serviceHistory.isEmpty()) { %>
+                <div class="empty-state">No completed or billed appointments have been saved for your account yet.</div>
+            <% } else { %>
+            <table id="serviceTable">
                 <thead>
                     <tr>
+                        <th>Appointment</th>
                         <th>Date</th>
                         <th>Service</th>
-                        <th>Vehicle</th>
                         <th>Technician</th>
-                        <th>Cost</th>
+                        <th>Status</th>
+                        <th>Amount</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>Mar 20, 2026</td>
-                        <td><span class="service-badge">Engine Inspection</span></td>
-                        <td>Nissan X-Trail</td>
-                        <td>Nurul Amin</td>
-                        <td class="cost">RM 200</td>
+                    <% for (Appointments appointment : serviceHistory) { %>
+                    <tr data-id="<%= appointment.getAppointment_id() %>"
+                        data-date="<%= appointment.getAppointment_date() %>"
+                        data-service="<%= serviceNames.get(appointment.getAppointment_id()) %>"
+                        data-technician="<%= technicianNames.get(appointment.getAppointment_id()) %>"
+                        data-status="<%= appointment.getStatus() %>"
+                        data-total="<%= appointment.getTotal_amount() %>"
+                        data-tech-note="<%= technicianNotes.get(appointment.getAppointment_id()) %>"
+                        data-feedback="<%= customerFeedback.get(appointment.getAppointment_id()) %>">
+                        <td>#APT<%= appointment.getAppointment_id() %></td>
+                        <td><%= appointment.getAppointment_date() %></td>
+                        <td><%= serviceNames.get(appointment.getAppointment_id()) %></td>
+                        <td><%= technicianNames.get(appointment.getAppointment_id()) %></td>
                         <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">Details</button>
-                                <button class="btn-small btn-invoice">Invoice</button>
-                            </div>
+                            <span class="status-pill <%= "PAID".equalsIgnoreCase(appointment.getStatus()) ? "paid" : ("UNPAID".equalsIgnoreCase(appointment.getStatus()) ? "unpaid" : "") %>">
+                                <%= appointment.getStatus() %>
+                            </span>
                         </td>
+                        <td>RM <%= appointment.getTotal_amount() %></td>
+                        <td><button type="button" class="btn-small" onclick="openServiceModal(this)">Details</button></td>
                     </tr>
-                    <tr>
-                        <td>Mar 10, 2026</td>
-                        <td><span class="service-badge">Oil Change</span></td>
-                        <td>Toyota Camry</td>
-                        <td>John Smith</td>
-                        <td class="cost">RM 150</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">Details</button>
-                                <button class="btn-small btn-invoice">Invoice</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Feb 28, 2026</td>
-                        <td><span class="service-badge">Brake Service</span></td>
-                        <td>BMW 3 Series</td>
-                        <td>Ahmad Hassan</td>
-                        <td class="cost">RM 250</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">Details</button>
-                                <button class="btn-small btn-invoice">Invoice</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Feb 15, 2026</td>
-                        <td><span class="service-badge">Tire Rotation</span></td>
-                        <td>Honda CR-V</td>
-                        <td>John Smith</td>
-                        <td class="cost">RM 100</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">Details</button>
-                                <button class="btn-small btn-invoice">Invoice</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Feb 01, 2026</td>
-                        <td><span class="service-badge">AC Service</span></td>
-                        <td>Nissan X-Trail</td>
-                        <td>Nurul Amin</td>
-                        <td class="cost">RM 180</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">Details</button>
-                                <button class="btn-small btn-invoice">Invoice</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Jan 20, 2026</td>
-                        <td><span class="service-badge">General Maintenance</span></td>
-                        <td>Toyota Camry</td>
-                        <td>Ahmad Hassan</td>
-                        <td class="cost">RM 175</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">Details</button>
-                                <button class="btn-small btn-invoice">Invoice</button>
-                            </div>
-                        </td>
-                    </tr>
+                    <% } %>
                 </tbody>
             </table>
+            <% } %>
         </div>
     </div>
 </div>
 
+<div id="serviceModal" class="modal">
+    <div class="modal-card">
+        <div class="header-row" style="margin-bottom:18px;">
+            <div class="header-text"><h1 style="font-size:28px;">Service Details</h1><p>Completed service notes and feedback</p></div>
+            <div class="actions"><button class="btn btn-light" type="button" onclick="closeServiceModal()">Close</button></div>
+        </div>
+        <div class="detail-grid">
+            <div class="detail-card"><strong>Appointment</strong><span id="serviceModalAppointment"></span></div>
+            <div class="detail-card"><strong>Date</strong><span id="serviceModalDate"></span></div>
+            <div class="detail-card"><strong>Service</strong><span id="serviceModalService"></span></div>
+            <div class="detail-card"><strong>Technician</strong><span id="serviceModalTechnician"></span></div>
+            <div class="detail-card"><strong>Status</strong><span id="serviceModalStatus"></span></div>
+            <div class="detail-card"><strong>Total Amount</strong><span id="serviceModalAmount"></span></div>
+            <div class="detail-card full-span"><strong>Technician Notes</strong><span id="serviceModalTechNote"></span></div>
+            <div class="detail-card full-span"><strong>Your Feedback</strong><span id="serviceModalFeedback"></span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById("serviceSearch").addEventListener("input", function () {
+        const keyword = this.value.toLowerCase();
+        document.querySelectorAll("#serviceTable tbody tr").forEach(function (row) {
+            row.style.display = row.innerText.toLowerCase().includes(keyword) ? "" : "none";
+        });
+    });
+    function openServiceModal(button) {
+        const row = button.closest("tr");
+        document.getElementById("serviceModalAppointment").textContent = "#APT" + (row.dataset.id || "-");
+        document.getElementById("serviceModalDate").textContent = row.dataset.date || "-";
+        document.getElementById("serviceModalService").textContent = row.dataset.service || "-";
+        document.getElementById("serviceModalTechnician").textContent = row.dataset.technician || "-";
+        document.getElementById("serviceModalStatus").textContent = row.dataset.status || "-";
+        document.getElementById("serviceModalAmount").textContent = "RM " + (row.dataset.total || "0.00");
+        document.getElementById("serviceModalTechNote").textContent = row.dataset.techNote || "-";
+        document.getElementById("serviceModalFeedback").textContent = row.dataset.feedback || "-";
+        document.getElementById("serviceModal").classList.add("show");
+    }
+    function closeServiceModal() { document.getElementById("serviceModal").classList.remove("show"); }
+</script>
 </body>
 </html>

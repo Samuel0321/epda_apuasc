@@ -1,11 +1,37 @@
-<%--
+﻿<%--
     Document   : Appointments
     Created on : Mar 24, 2026
     Author     : pinju
     Updated   : New Workflow (PENDING -> ASSIGNED -> WAITING APPROVAL -> APPROVED -> COMPLETED -> PAID)
 --%>
 
+<%@page import="java.math.BigDecimal,java.text.NumberFormat,java.util.Arrays,java.util.List,java.util.Locale,models.AppointmentService,models.AppointmentServiceFacade,models.Appointments,models.AppointmentsFacade,models.ServiceEntity,models.ServiceEntityFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%
+    UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
+    if (currentUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
+    String currentRole = currentUser.getRole() == null ? "" : currentUser.getRole().trim().toLowerCase();
+    if (!("receptionist".equals(currentRole) || "counter_staff".equals(currentRole))) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
+
+    AppointmentsFacade appointmentsFacade = EjbLookup.lookup(AppointmentsFacade.class, "AppointmentsFacade");
+    UsersEntityFacade usersFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+    AppointmentServiceFacade appointmentServiceFacade = EjbLookup.lookup(AppointmentServiceFacade.class, "AppointmentServiceFacade");
+    ServiceEntityFacade serviceEntityFacade = EjbLookup.lookup(ServiceEntityFacade.class, "ServiceEntityFacade");
+
+    List<Appointments> appointments = appointmentsFacade.findAllOrdered();
+    NumberFormat currency = NumberFormat.getCurrencyInstance(new Locale("ms", "MY"));
+
+    java.util.Map<Integer, String> userNameById = new java.util.HashMap<Integer, String>();
+    for (UsersEntity user : usersFacade.findAll()) {
+        userNameById.put(user.getId(), user.getName());
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -291,22 +317,9 @@
 
     <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; APPOINTMENTS
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">R</div>
-                    <div class="user-info">
-                        <div class="name">Receptionist</div>
-                        <div class="email">receptionist@autofix.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="APPOINTMENTS" />
+        </jsp:include>
 
         <!-- HEADER -->
         <div class="header-row">
@@ -321,13 +334,15 @@
 
         <!-- FILTERS -->
         <div class="filters">
-            <button class="filter-btn active">All</button>
-            <button class="filter-btn">Pending</button>
-            <button class="filter-btn">Assigned</button>
-            <button class="filter-btn">Waiting Approval</button>
-            <button class="filter-btn">Approved</button>
-            <button class="filter-btn">Completed</button>
-            <button class="filter-btn">Paid</button>
+            <button class="filter-btn active" data-filter="All">All</button>
+            <button class="filter-btn" data-filter="Today">Today</button>
+            <button class="filter-btn" data-filter="Pending">Pending</button>
+            <button class="filter-btn" data-filter="Assigned">Assigned</button>
+            <button class="filter-btn" data-filter="Waiting Approval">Waiting Approval</button>
+            <button class="filter-btn" data-filter="Delayed">Delayed</button>
+            <button class="filter-btn" data-filter="Accepted">Repair In Progress</button>
+            <button class="filter-btn" data-filter="Completed">Completed</button>
+            <button class="filter-btn" data-filter="Paid">Paid</button>
         </div>
 
         <!-- TABLE -->
@@ -351,139 +366,108 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- STATUS: PENDING (Waiting for Technician Assignment) -->
+                    <% if (appointments == null || appointments.isEmpty()) { %>
                     <tr>
-                        <td>#APT001</td>
-                        <td>Ahmad Faisal</td>
-                        <td>Normal Service</td>
-                        <td>Engine loud noise, vibrations</td>
-                        <td>Mar 25, 2026 - 10:00 AM</td>
-                        <td>-</td>
-                        <td><span class="badge badge-pending">PENDING</span></td>
-                        <td>-</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">View Details</button>
-                                <button class="btn-small btn-assign" onclick="assignTechnician(1)">Assign Tech</button>
-                            </div>
-                        </td>
+                        <td colspan="9">No appointments found.</td>
                     </tr>
+                    <% } else {
+                        for (Appointments appointment : appointments) {
+                            Integer appointmentId = appointment.getId();
+                            String status = appointment.getStatus() == null ? "PENDING" : appointment.getStatus().trim().toUpperCase();
+                            String customerName = userNameById.get(appointment.getCustomer_id());
+                            if (customerName == null || customerName.trim().isEmpty()) {
+                                customerName = "Customer #" + appointment.getCustomer_id();
+                            }
+                            String technicianName = "-";
+                            if (appointment.getTechnician_id() != null) {
+                                technicianName = userNameById.get(appointment.getTechnician_id());
+                                if (technicianName == null || technicianName.trim().isEmpty()) {
+                                    technicianName = "Technician #" + appointment.getTechnician_id();
+                                }
+                            }
 
-                    <!-- STATUS: ASSIGNED (Technician Assigned, Waiting Quotation) -->
-                    <tr>
-                        <td>#APT002</td>
-                        <td>Nurul Huda</td>
-                        <td>Major Service</td>
-                        <td>Brake system inspection needed</td>
-                        <td>Mar 25, 2026 - 2:00 PM</td>
-                        <td>John Smith</td>
-                        <td><span class="badge badge-assigned">ASSIGNED</span></td>
-                        <td>-</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">View Details</button>
-                            </div>
-                        </td>
-                    </tr>
+                            List<AppointmentService> links = appointmentServiceFacade.findByAppointmentId(appointmentId);
+                            String serviceName = "General Service";
+                            if (links != null && !links.isEmpty()) {
+                                Integer serviceId = links.get(0).getService_id();
+                                ServiceEntity service = serviceId == null ? null : serviceEntityFacade.find(serviceId);
+                                if (service != null && service.getService_name() != null && !service.getService_name().trim().isEmpty()) {
+                                    serviceName = service.getService_name();
+                                }
+                            }
 
-                    <!-- STATUS: WAITING APPROVAL (Technician submitted Quotation) -->
-                    <tr>
-                        <td>#APT003</td>
-                        <td>Siti Aminah</td>
-                        <td>Normal Service</td>
-                        <td>Oil change and filter replacement</td>
-                        <td>Mar 26, 2026 - 11:00 AM</td>
-                        <td>Ahmad Hassan</td>
-                        <td><span class="badge badge-waiting-approval">WAITING APPROVAL</span></td>
-                        <td><strong>RM 250</strong></td>
+                            String issueText = appointment.getCustomer_notes() == null ? "-" : appointment.getCustomer_notes();
+                            String badgeClass = "badge-pending";
+                            if ("ASSIGNED".equals(status)) {
+                                badgeClass = "badge-assigned";
+                            } else if ("WAITING APPROVAL".equals(status)) {
+                                badgeClass = "badge-waiting-approval";
+                            } else if ("DELAYED".equals(status)) {
+                                badgeClass = "badge-rejected";
+                            } else if (Arrays.asList("APPROVED", "ACCEPTED").contains(status)) {
+                                badgeClass = "badge-approved";
+                            } else if (Arrays.asList("REJECTED", "UNPAID").contains(status)) {
+                                badgeClass = "badge-rejected";
+                            } else if ("COMPLETED".equals(status)) {
+                                badgeClass = "badge-completed";
+                            } else if ("PAID".equals(status)) {
+                                badgeClass = "badge-paid";
+                            }
+                    %>
+                    <tr class="appointment-row" data-status="<%= status %>" data-date="<%= (appointment.getAppointment_date() == null ? "" : appointment.getAppointment_date().toString()) %>">
+                        <td>#APT<%= String.format("%03d", appointmentId) %></td>
+                        <td><%= customerName %></td>
+                        <td><%= serviceName %></td>
+                        <td><%= issueText %></td>
+                        <td><%= (appointment.getAppointment_date() == null ? "-" : appointment.getAppointment_date().toString()) %> - <%= (appointment.getAppointment_time() == null ? "-" : appointment.getAppointment_time().toString()) %></td>
+                        <td><%= technicianName %></td>
+                        <td><span class="badge <%= badgeClass %>"><%= displayReceptionStatus(status) %></span></td>
+                        <td><strong><%= displayAmount(appointment.getTotal_amount(), currency) %></strong></td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-view">View Quotation</button>
-                                <button class="btn-small btn-approve" onclick="approveQuotation(3)">Approve</button>
+                                  <% if ("PENDING".equals(status) && appointment.getTechnician_id() == null) { %>
+                                <button class="btn-small btn-assign" data-id="<%= appointmentId %>" onclick="assignTechnicianFromButton(this)">Assign Tech</button>
+                                <% } %>
+                                <% if ("WAITING APPROVAL".equals(status)) { %>
+                                <button class="btn-small btn-approve" type="button" disabled>Await Customer</button>
+                                <% } %>
+                                <% if ("DELAYED".equals(status) && appointment.getTechnician_id() != null) { %>
+                                <button class="btn-small btn-assign" data-id="<%= appointmentId %>" onclick="assignTechnicianFromButton(this)">Reassign Tech</button>
+                                <% } %>
+                                <% if ("COMPLETED".equals(status) || "UNPAID".equals(status)) { %>
+                                <form method="post" action="<%= request.getContextPath() %>/ReceptionistPaymentServlet" style="display:inline;">
+                                    <input type="hidden" name="appointmentId" value="<%= appointmentId %>">
+                                    <button type="submit" class="btn-small btn-collect">Paid</button>
+                                </form>
+                                <% } %>
+                                <button class="btn-small btn-view"
+                                        data-id="#APT<%= String.format("%03d", appointmentId) %>"
+                                        data-customer="<%= escapeForJs(customerName) %>"
+                                        data-service="<%= escapeForJs(serviceName) %>"
+                                        data-date="<%= (appointment.getAppointment_date() == null ? "-" : appointment.getAppointment_date().toString()) %>"
+                                        data-time="<%= (appointment.getAppointment_time() == null ? "-" : appointment.getAppointment_time().toString()) %>"
+                                        data-status="<%= escapeForJs(displayReceptionStatus(status)) %>"
+                                        data-amount="<%= escapeForJs(displayAmount(appointment.getTotal_amount(), currency)) %>"
+                                        data-booking-note="<%= escapeForJs(issueText) %>"
+                                        data-tech-note="<%= escapeForJs(normalizeNote(appointment.getTechnician_notes())) %>"
+                                        data-staff-comment="<%= escapeForJs(normalizeNote(appointmentsFacade.stripSchedulingMetadata(appointment.getCounter_staff_comment()))) %>"
+                                        data-technician="<%= escapeForJs(technicianName) %>"
+                                        onclick="viewTechnicianNotes(this)">View</button>
                             </div>
                         </td>
                     </tr>
-
-                    <!-- STATUS: APPROVED (Customer approved Quotation) -->
-                    <tr>
-                        <td>#APT004</td>
-                        <td>Muhammad Ali</td>
-                        <td>Major Service</td>
-                        <td>Full vehicle inspection and maintenance</td>
-                        <td>Mar 27, 2026 - 3:00 PM</td>
-                        <td>Nurul Amin</td>
-                        <td><span class="badge badge-approved">APPROVED</span></td>
-                        <td><strong>RM 450</strong></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">View Quotation</button>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- STATUS: REJECTED (Customer rejected Quotation) -->
-                    <tr>
-                        <td>#APT005</td>
-                        <td>Zahra Rahman</td>
-                        <td>Normal Service</td>
-                        <td>Tire rotation and balancing</td>
-                        <td>Mar 28, 2026 - 9:30 AM</td>
-                        <td>John Smith</td>
-                        <td><span class="badge badge-rejected">REJECTED</span></td>
-                        <td><strong>RM 320</strong></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">View Details</button>
-                                <button class="btn-small btn-assign" onclick="reassignTechnician(5)">New Quote</button>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- STATUS: COMPLETED - UNPAID (Service Performed, Awaiting Payment) -->
-                    <tr>
-                        <td>#APT006</td>
-                        <td>Hassan Ibrahim</td>
-                        <td>Normal Service</td>
-                        <td>Battery replacement and terminals cleaning</td>
-                        <td>Mar 23, 2026 - 1:00 PM</td>
-                        <td>Ahmad Hassan</td>
-                        <td><span class="badge badge-rejected">UNPAID</span></td>
-                        <td><strong>RM 180</strong></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view" onclick="viewTechnicianNotes(6)">Technician Notes</button>
-                                <button class="btn-small btn-view">View Invoice</button>
-                                <button class="btn-small btn-collect" onclick="markAsPaid(6)">Paid</button>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- STATUS: PAID (Payment Received) -->
-                    <tr>
-                        <td>#APT007</td>
-                        <td>Fatima Karim</td>
-                        <td>Normal Service</td>
-                        <td>Spark plugs replacement and diagnostics</td>
-                        <td>Mar 22, 2026 - 11:00 AM</td>
-                        <td>John Smith</td>
-                        <td><span class="badge badge-paid">PAID</span></td>
-                        <td><strong>RM 150</strong></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">View Receipt</button>
-                            </div>
-                        </td>
-                    </tr>
+                    <%  }
+                       } %>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<!-- TECHNICIAN NOTES MODAL -->
+<!-- APPOINTMENT DETAILS MODAL -->
 <div id="notesModal" class="modal">
     <div class="modal-content">
-        <div class="modal-header">📋 Technician's Service Notes</div>
+        <div class="modal-header">Appointment Details</div>
         <div id="notesBody">
             <!-- Notes will be inserted here -->
         </div>
@@ -494,51 +478,73 @@
 </div>
 
 <script>
+    function assignTechnicianFromButton(button) {
+        assignTechnician(button.getAttribute('data-id'));
+    }
+
     function assignTechnician(appointmentId) {
         window.location.href = 'AssignTechnician.jsp?id=' + appointmentId;
     }
 
-    function approveQuotation(appointmentId) {
-        window.location.href = 'ApproveQuotation.jsp?id=' + appointmentId;
-    }
-
-    function markAsPaid(appointmentId) {
-        alert('Appointment #APT' + appointmentId.toString().padStart(3, '0') + ' marked as PAID');
-        location.reload();
-    }
-
-    function viewTechnicianNotes(appointmentId) {
-        // Get completion data from localStorage
-        const completions = JSON.parse(localStorage.getItem('completions') || '[]');
-        const completion = completions.find(c => c.taskId === appointmentId);
-
+    function viewTechnicianNotes(button) {
+        const appointmentId = button.getAttribute('data-id');
+        const customer = button.getAttribute('data-customer');
+        const service = button.getAttribute('data-service');
+        const date = button.getAttribute('data-date');
+        const time = button.getAttribute('data-time');
+        const status = button.getAttribute('data-status');
+        const amount = button.getAttribute('data-amount');
+        const bookingNote = button.getAttribute('data-booking-note');
+        const techNote = button.getAttribute('data-tech-note');
+        const staffComment = button.getAttribute('data-staff-comment');
+        const technician = button.getAttribute('data-technician');
         const notesBody = document.getElementById('notesBody');
-        
-        if (completion) {
-            notesBody.innerHTML = `
-                <div class="comment-section">
-                    <div class="comment-label">📝 Service Completion Notes</div>
-                    <div class="comment-text">${completion.comment}</div>
-                    <div class="comment-meta">
-                        <strong>Technician:</strong> ${completion.technician}<br>
-                        <strong>Completed:</strong> ${completion.completedAt}
-                    </div>
-                </div>
-            `;
-        } else {
-            notesBody.innerHTML = `
-                <div class="comment-section">
-                    <div class="comment-label">⚠️ No notes available</div>
-                    <div class="comment-text">Technician has not yet provided completion notes for this service.</div>
-                </div>
-            `;
-        }
+        const cleanedTechNote = normalizeModalText(techNote);
+        const cleanedStaffComment = normalizeModalText(staffComment);
+        notesBody.innerHTML =
+            '<div class="comment-section">' +
+                '<div class="comment-label">Appointment</div>' +
+                '<div class="comment-text">' + (appointmentId || '-') + ' | ' + (customer || '-') + '</div>' +
+            '</div>' +
+            '<div class="comment-section">' +
+                '<div class="comment-label">Schedule</div>' +
+                '<div class="comment-text">' + (date || '-') + ' | ' + (time || '-') + '</div>' +
+            '</div>' +
+            '<div class="comment-section">' +
+                '<div class="comment-label">Service / Status</div>' +
+                '<div class="comment-text">' + (service || '-') + ' | ' + (status || '-') + '</div>' +
+                '<div class="comment-meta"><strong>Amount:</strong> ' + (amount || '-') + '</div>' +
+            '</div>' +
+            '<div class="comment-section">' +
+                '<div class="comment-label">Booking Note</div>' +
+                '<div class="comment-text">' + (bookingNote || '-') + '</div>' +
+            '</div>' +
+            '<div class="comment-section">' +
+                '<div class="comment-label">Technician Notes</div>' +
+                '<div class="comment-text">' + cleanedTechNote + '</div>' +
+                '<div class="comment-meta"><strong>Technician:</strong> ' + (technician || '-') + '</div>' +
+            '</div>' +
+            '<div class="comment-section">' +
+                '<div class="comment-label">Receptionist Comment</div>' +
+                '<div class="comment-text">' + cleanedStaffComment + '</div>' +
+            '</div>';
 
         document.getElementById('notesModal').classList.add('show');
     }
 
     function closeNotesModal() {
         document.getElementById('notesModal').classList.remove('show');
+    }
+
+    function normalizeModalText(value) {
+        if (!value) {
+            return '-';
+        }
+        const normalized = String(value).trim().toLowerCase();
+        if (normalized === '' || normalized === 'false' || normalized === 'null' || normalized === 'undefined') {
+            return '-';
+        }
+        return value;
     }
 
     // Close modal when clicking outside
@@ -548,7 +554,94 @@
             closeNotesModal();
         }
     }
+
+    // Filters logic
+    document.addEventListener("DOMContentLoaded", function() {
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const rows = document.querySelectorAll('.appointment-row');
+        
+        const today = new Date();
+        const todayStr = today.getFullYear() + "-" + String(today.getMonth()+1).padStart(2,'0') + "-" + String(today.getDate()).padStart(2,'0');
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Update active state
+                filterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                const filterValue = this.getAttribute('data-filter');
+
+                rows.forEach(row => {
+                    const status = row.getAttribute('data-status');
+                    const date = row.getAttribute('data-date');
+                    
+                    if (filterValue === 'All') {
+                        row.style.display = '';
+                    } else if (filterValue === 'Today') {
+                        if (date === todayStr) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    } else {
+                        if (status.toUpperCase() === filterValue.toUpperCase()) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        });
+    });
 </script>
 
 </body>
 </html>
+<%!
+    private String escapeForJs(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "&quot;").replace("\r", " ").replace("\n", " ");
+    }
+
+    private String displayAmount(BigDecimal amount, NumberFormat currency) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return "To be assessed by technician";
+        }
+        return currency.format(amount);
+    }
+
+    private String displayReceptionStatus(String status) {
+        if (status == null) {
+            return "-";
+        }
+        switch (status) {
+            case "PENDING": return "Pending Assignment";
+            case "ASSIGNED": return "Technician Assigned";
+            case "WAITING APPROVAL": return "Awaiting Customer Decision";
+            case "ACCEPTED": return "Repair In Progress";
+            case "DELAYED": return "Repair Delayed";
+            case "REJECTED": return "Quotation Rejected";
+            case "COMPLETED": return "Ready For Payment";
+            case "UNPAID": return "Payment Pending";
+            case "PAID": return "Paid";
+            default: return status;
+        }
+    }
+
+    private String normalizeNote(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty() || "false".equalsIgnoreCase(trimmed) || "null".equalsIgnoreCase(trimmed) || "undefined".equalsIgnoreCase(trimmed)) {
+            return "";
+        }
+        return trimmed;
+    }
+%>
+
+
+

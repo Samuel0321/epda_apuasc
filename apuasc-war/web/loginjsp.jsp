@@ -5,6 +5,11 @@
 --%>
 
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%
+    if ("1".equals(request.getParameter("logout"))) {
+        session.invalidate();
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -112,12 +117,30 @@
             text-align: center;
         }
 
+        .success {
+            margin-top: 15px;
+            color: #166534;
+            font-size: 13px;
+            text-align: center;
+        }
+
         .logo {
             text-align: center;
             margin-bottom: 15px;
             font-weight: bold;
             font-size: 18px;
             color: #2a5298;
+        }
+
+        .demo-box {
+            margin-top: 18px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.6;
         }
     </style>
 </head>
@@ -143,12 +166,24 @@
         </form>
 
         <div class="links">
-            <a href="register.jsp">Create account</a>
-            <a href="RegisterServlet">Register (Servlet)</a>
+            <a href="RegisterServlet">Create account</a>
+            <a href="RegisterServlet">Registration</a>
         </div>
 
         <div class="error">
             ${errorMessage}
+        </div>
+
+        <div class="success">
+            ${param.registered eq '1' ? 'Registration completed. You can log in now.' : ''}
+        </div>
+
+        <div class="demo-box">
+            Demo logins:
+            <br>Customer: `sam@gmail.com` / `123`
+            <br>Receptionist: `pj@gmail.com` / `123`
+            <br>Technician: `wj@tech.com` / `123`
+            <br>Manager: `cj@manager.com` / `123`
         </div>
     </div>
 

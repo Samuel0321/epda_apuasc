@@ -4,9 +4,19 @@
  */
 package models;
 
+import jakarta.ejb.EJB;
 import jakarta.ejb.Stateless;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  *
@@ -15,8 +25,13 @@ import jakarta.persistence.PersistenceContext;
 @Stateless
 public class AppointmentsFacade extends AbstractFacade<Appointments> {
 
+    private static final String DELAY_TOKEN_PREFIX = "[DELAY_HOURS=";
+
     @PersistenceContext(unitName = "apuasc-ejbPU")
     private EntityManager em;
+
+    @EJB
+    private AppointmentServiceFacade appointmentServiceFacade;
 
     @Override
     protected EntityManager getEntityManager() {
@@ -26,5 +41,238 @@ public class AppointmentsFacade extends AbstractFacade<Appointments> {
     public AppointmentsFacade() {
         super(Appointments.class);
     }
-    
+
+    public List<Appointments> findByCustomerId(Integer customerId) {
+        if (customerId == null) {
+            return Collections.emptyList();
+        }
+        return em.createQuery(
+                "SELECT a FROM Appointments a WHERE a.customer_id = :customerId ORDER BY a.appointment_date DESC, a.appointment_time DESC",
+                Appointments.class
+        ).setParameter("customerId", customerId).getResultList();
+    }
+
+    public List<Appointments> findAllOrdered() {
+        List<Appointments> items = findAll();
+        if (items == null || items.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Appointments> ordered = new ArrayList<>(items);
+        ordered.sort(Comparator
+                .comparing(Appointments::getAppointment_date,
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(Appointments::getAppointment_time,
+                        Comparator.nullsLast(Comparator.reverseOrder())));
+        return ordered;
+    }
+
+    public List<Appointments> findByCustomerIdAndStatuses(Integer customerId, List<String> statuses) {
+        if (customerId == null || statuses == null || statuses.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return em.createQuery(
+                "SELECT a FROM Appointments a WHERE a.customer_id = :customerId AND UPPER(COALESCE(a.status, '')) IN :statuses ORDER BY a.appointment_date DESC, a.appointment_time DESC",
+                Appointments.class
+        ).setParameter("customerId", customerId)
+         .setParameter("statuses", statuses)
+         .getResultList();
+    }
+
+    public long countByCustomerIdAndStatuses(Integer customerId, List<String> statuses) {
+        if (customerId == null || statuses == null || statuses.isEmpty()) {
+            return 0;
+        }
+        Long count = em.createQuery(
+                "SELECT COUNT(a) FROM Appointments a WHERE a.customer_id = :customerId AND UPPER(COALESCE(a.status, '')) IN :statuses",
+                Long.class
+        ).setParameter("customerId", customerId)
+         .setParameter("statuses", statuses)
+         .getSingleResult();
+        return count == null ? 0 : count;
+    }
+
+    public BigDecimal sumByCustomerIdAndStatuses(Integer customerId, List<String> statuses) {
+        if (customerId == null || statuses == null || statuses.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal total = em.createQuery(
+                "SELECT COALESCE(SUM(a.total_amount), 0) FROM Appointments a WHERE a.customer_id = :customerId AND UPPER(COALESCE(a.status, '')) IN :statuses",
+                BigDecimal.class
+        ).setParameter("customerId", customerId)
+         .setParameter("statuses", statuses)
+         .getSingleResult();
+        return total == null ? BigDecimal.ZERO : total;
+    }
+
+    public boolean existsByCustomerDateTime(Integer customerId, LocalDate appointmentDate, java.time.LocalTime appointmentTime) {
+        Long count = em.createQuery(
+                "SELECT COUNT(a) FROM Appointments a WHERE a.customer_id = :customerId AND a.appointment_date = :appointmentDate AND a.appointment_time = :appointmentTime",
+                Long.class
+        ).setParameter("customerId", customerId)
+         .setParameter("appointmentDate", appointmentDate)
+         .setParameter("appointmentTime", appointmentTime)
+         .getSingleResult();
+        return count != null && count > 0;
+    }
+
+    public List<Appointments> findByTechnicianId(Integer technicianId) {
+        if (technicianId == null) {
+            return Collections.emptyList();
+        }
+        return em.createQuery(
+                "SELECT a FROM Appointments a WHERE a.technician_id = :technicianId ORDER BY a.appointment_date ASC, a.appointment_time ASC",
+                Appointments.class
+        ).setParameter("technicianId", technicianId).getResultList();
+    }
+
+    public List<Appointments> findQuotationWorkflowByTechnicianId(Integer technicianId) {
+        if (technicianId == null) {
+            return Collections.emptyList();
+        }
+        return em.createQuery(
+                "SELECT a FROM Appointments a WHERE a.technician_id = :technicianId AND UPPER(COALESCE(a.status, '')) IN :statuses ORDER BY a.appointment_date ASC, a.appointment_time ASC",
+                Appointments.class
+        ).setParameter("technicianId", technicianId)
+         .setParameter("statuses", Arrays.asList("ASSIGNED", "WAITING APPROVAL", "ACCEPTED", "DELAYED", "REJECTED", "COMPLETED", "UNPAID", "PAID"))
+         .getResultList();
+    }
+
+    public long countByStatuses(List<String> statuses) {
+        if (statuses == null || statuses.isEmpty()) {
+            return 0;
+        }
+        Long count = em.createQuery(
+                "SELECT COUNT(a) FROM Appointments a WHERE UPPER(COALESCE(a.status, '')) IN :statuses",
+                Long.class
+        ).setParameter("statuses", statuses).getSingleResult();
+        return count == null ? 0 : count;
+    }
+
+    public long countByDate(LocalDate appointmentDate) {
+        if (appointmentDate == null) {
+            return 0;
+        }
+        Long count = em.createQuery(
+                "SELECT COUNT(a) FROM Appointments a WHERE a.appointment_date = :appointmentDate",
+                Long.class
+        ).setParameter("appointmentDate", appointmentDate).getSingleResult();
+        return count == null ? 0 : count;
+    }
+
+    public long countByDateAndStatuses(LocalDate appointmentDate, List<String> statuses) {
+        if (appointmentDate == null || statuses == null || statuses.isEmpty()) {
+            return 0;
+        }
+        Long count = em.createQuery(
+                "SELECT COUNT(a) FROM Appointments a WHERE a.appointment_date = :appointmentDate AND UPPER(COALESCE(a.status, '')) IN :statuses",
+                Long.class
+        ).setParameter("appointmentDate", appointmentDate)
+         .setParameter("statuses", statuses)
+         .getSingleResult();
+        return count == null ? 0 : count;
+    }
+
+    public BigDecimal sumByStatuses(List<String> statuses) {
+        if (statuses == null || statuses.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal total = em.createQuery(
+                "SELECT COALESCE(SUM(a.total_amount), 0) FROM Appointments a WHERE UPPER(COALESCE(a.status, '')) IN :statuses",
+                BigDecimal.class
+        ).setParameter("statuses", statuses).getSingleResult();
+        return total == null ? BigDecimal.ZERO : total;
+    }
+
+    public boolean isPastAppointmentSlot(LocalDate appointmentDate, LocalTime appointmentTime) {
+        if (appointmentDate == null || appointmentTime == null) {
+            return true;
+        }
+        return LocalDateTime.of(appointmentDate, appointmentTime).isBefore(LocalDateTime.now());
+    }
+
+    public boolean hasTechnicianConflict(Integer technicianId, LocalDate appointmentDate, LocalTime appointmentTime,
+            int requestedDurationHours, Integer excludeAppointmentId) {
+        if (technicianId == null || appointmentDate == null || appointmentTime == null) {
+            return false;
+        }
+
+        List<Appointments> sameDayAppointments = em.createQuery(
+                "SELECT a FROM Appointments a "
+                + "WHERE a.technician_id = :technicianId "
+                + "AND a.appointment_date = :appointmentDate "
+                + "AND UPPER(COALESCE(a.status, '')) IN :reservedStatuses",
+                Appointments.class
+        ).setParameter("technicianId", technicianId)
+         .setParameter("appointmentDate", appointmentDate)
+         .setParameter("reservedStatuses", Arrays.asList("ASSIGNED", "WAITING APPROVAL", "ACCEPTED", "DELAYED"))
+         .getResultList();
+
+        LocalDateTime requestedStart = LocalDateTime.of(appointmentDate, appointmentTime);
+        LocalDateTime requestedEnd = requestedStart.plusHours(Math.max(1, requestedDurationHours));
+
+        for (Appointments existing : sameDayAppointments) {
+            if (existing == null || existing.getAppointment_id() == null || existing.getAppointment_time() == null) {
+                continue;
+            }
+            if (excludeAppointmentId != null && excludeAppointmentId.equals(existing.getAppointment_id())) {
+                continue;
+            }
+
+            int existingDurationHours = estimateReservedDurationHours(existing);
+            LocalDateTime existingStart = LocalDateTime.of(appointmentDate, existing.getAppointment_time());
+            LocalDateTime existingEnd = existingStart.plusHours(Math.max(1, existingDurationHours));
+
+            if (requestedStart.isBefore(existingEnd) && existingStart.isBefore(requestedEnd)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int estimateReservedDurationHours(Appointments appointment) {
+        if (appointment == null) {
+            return 1;
+        }
+        int baseHours = appointmentServiceFacade.estimateAppointmentDurationHours(appointment.getAppointment_id());
+        int delayHours = extractDelayHours(appointment.getCounter_staff_comment());
+        return Math.max(1, baseHours + delayHours);
+    }
+
+    public int extractDelayHours(String comment) {
+        if (comment == null) {
+            return 0;
+        }
+        String trimmed = comment.trim();
+        if (!trimmed.startsWith(DELAY_TOKEN_PREFIX)) {
+            return 0;
+        }
+        int closingIndex = trimmed.indexOf(']');
+        if (closingIndex <= DELAY_TOKEN_PREFIX.length()) {
+            return 0;
+        }
+        try {
+            return Math.max(0, Integer.parseInt(trimmed.substring(DELAY_TOKEN_PREFIX.length(), closingIndex)));
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    public String stripSchedulingMetadata(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith(DELAY_TOKEN_PREFIX)) {
+            int closingIndex = trimmed.indexOf(']');
+            if (closingIndex >= 0 && closingIndex + 1 < trimmed.length()) {
+                return trimmed.substring(closingIndex + 1).trim();
+            }
+            return "";
+        }
+        return trimmed;
+    }
+
+    public String buildDelayedComment(int extraHours, String message) {
+        return DELAY_TOKEN_PREFIX + Math.max(1, extraHours) + "] " + (message == null ? "" : message.trim());
+    }
 }

@@ -1,10 +1,39 @@
-<%--
-    Document   : Schedule
-    Created on : Mar 24, 2026
-    Author     : pinju
---%>
+<%@page import="java.time.LocalDate,java.time.YearMonth,java.time.format.DateTimeParseException,java.util.HashMap,java.util.List,java.util.Map,models.Appointments,models.AppointmentsFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
+<%
+    UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
+    if (currentUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
 
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
+    UsersEntityFacade userFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+    AppointmentsFacade appointmentsFacade = EjbLookup.lookup(AppointmentsFacade.class, "AppointmentsFacade");
+    currentUser = userFacade.find(currentUser.getId());
+    session.setAttribute("user", currentUser);
+
+    List<Appointments> appointments = appointmentsFacade.findByTechnicianId(currentUser.getId());
+    Map<LocalDate, Integer> perDay = new HashMap<>();
+    for (Appointments appointment : appointments) {
+        if (appointment.getAppointment_date() != null) {
+            perDay.put(appointment.getAppointment_date(), perDay.getOrDefault(appointment.getAppointment_date(), 0) + 1);
+        }
+    }
+
+    LocalDate today = LocalDate.now();
+    LocalDate selectedDate = today;
+    try {
+        String selectedDateParam = request.getParameter("selectedDate");
+        if (selectedDateParam != null && !selectedDateParam.trim().isEmpty()) {
+            selectedDate = LocalDate.parse(selectedDateParam.trim());
+        }
+    } catch (DateTimeParseException ex) {
+        selectedDate = today;
+    }
+
+    YearMonth currentMonth = YearMonth.from(selectedDate);
+    LocalDate monthStart = currentMonth.atDay(1);
+    int daysInMonth = currentMonth.lengthOfMonth();
+%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -13,44 +42,58 @@
     <style>
         .schedule-container {
             background: white;
-            padding: 20px;
-            border-radius: 14px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            padding: 22px;
+            border-radius: 18px;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
             margin-bottom: 20px;
+            border: 1px solid #dbe2ea;
         }
 
-        .schedule-header {
+        .schedule-layout {
+            display: grid;
+            grid-template-columns: 7fr 3fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .schedule-toolbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
         }
 
-        .schedule-nav {
+        .schedule-picker {
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
-        .schedule-nav button {
-            padding: 8px 14px;
-            border: 1px solid #e2e8f0;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
+        .schedule-picker input[type="date"] {
+            padding: 10px 12px;
+            border: 1px solid #dbe2ea;
+            border-radius: 10px;
             font-size: 14px;
-            transition: all 0.3s ease;
         }
 
-        .schedule-nav button:hover {
-            background: #f1f5f9;
+        .schedule-picker button {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 10px;
+            background: #334155;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
         }
 
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 10px;
-            margin-bottom: 20px;
+            margin-top: 18px;
         }
 
         .day-header {
@@ -61,205 +104,161 @@
         }
 
         .day-cell {
-            aspect-ratio: 1;
+            min-height: 88px;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 10px;
             background: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
+            text-decoration: none;
+            color: inherit;
+            display: block;
         }
 
         .day-cell:hover {
             background: #f8fafc;
-            border-color: #2563eb;
+            border-color: #94a3b8;
         }
 
         .day-cell.today {
-            background: #dbeafe;
-            border-color: #2563eb;
-            font-weight: 600;
+            background: #f8fafc;
+            border-color: #94a3b8;
         }
 
-        .day-cell.other-month {
-            color: #cbd5e1;
+        .day-cell.selected {
+            background: #e2e8f0;
+            border-color: #334155;
         }
 
         .day-number {
-            font-size: 12px;
-            margin-bottom: 5px;
+            font-size: 13px;
+            color: #0f172a;
+            margin-bottom: 8px;
+            font-weight: 600;
         }
 
         .day-events {
-            font-size: 10px;
-            color: #10b981;
+            font-size: 12px;
+            color: #475569;
         }
 
         .timeline {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 14px;
         }
 
         .timeline-item {
-            border-left: 4px solid #2563eb;
+            border-left: 4px solid #94a3b8;
             padding: 15px;
             background: #f8fafc;
-            border-radius: 6px;
+            border-radius: 10px;
         }
 
-        .timeline-time {
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 5px;
-        }
-
-        .timeline-title {
-            font-size: 14px;
-            color: #475569;
-            margin-bottom: 3px;
-        }
-
-        .timeline-customer {
+        .timeline-status {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            color: #334155;
             font-size: 12px;
-            color: #64748b;
+            font-weight: 600;
         }
 
-        .timeline-item.completed {
-            border-left-color: #10b981;
-            background: #ecfdf5;
+        .timeline-panel {
+            position: sticky;
+            top: 20px;
         }
 
-        .timeline-item.in-progress {
-            border-left-color: #f59e0b;
-            background: #fffbeb;
+        .timeline-panel h3 {
+            margin-top: 0;
+        }
+
+        @media (max-width: 1100px) {
+            .schedule-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .timeline-panel {
+                position: static;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .calendar-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
     </style>
 </head>
-
 <body>
-
 <div class="layout">
-    <!-- Sidebar -->
     <jsp:include page="../../Component/Sidebar.jsp" />
-
-    <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; SCHEDULE
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">T</div>
-                    <div class="user-info">
-                        <div class="name">Technician</div>
-                        <div class="email">technician@autofix.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- HEADER -->
+        <jsp:include page="../../Component/Topbar.jsp"><jsp:param name="section" value="SCHEDULE" /></jsp:include>
         <div class="header-row">
             <div class="header-text">
                 <h1>My Schedule</h1>
-                <p>View your work schedule and appointments</p>
+                <p>Select any date to view that day’s appointment timeline for your technician account.</p>
             </div>
         </div>
 
-        <!-- CALENDAR -->
-        <div class="schedule-container">
-            <div class="schedule-header">
-                <h3>March 2026</h3>
-                <div class="schedule-nav">
-                    <button>&lt; Previous</button>
-                    <button>Today</button>
-                    <button>Next &gt;</button>
+        <div class="schedule-layout">
+            <div class="schedule-container">
+                <div class="schedule-toolbar">
+                    <h3><%= currentMonth.getMonth() %> <%= currentMonth.getYear() %></h3>
+                    <form method="get" class="schedule-picker">
+                        <input type="date" name="selectedDate" value="<%= selectedDate %>">
+                        <button type="submit">View Day</button>
+                    </form>
+                </div>
+
+                <div class="calendar-grid">
+                    <div class="day-header">Mon</div>
+                    <div class="day-header">Tue</div>
+                    <div class="day-header">Wed</div>
+                    <div class="day-header">Thu</div>
+                    <div class="day-header">Fri</div>
+                    <div class="day-header">Sat</div>
+                    <div class="day-header">Sun</div>
+
+                    <% for (int day = 1; day <= daysInMonth; day++) {
+                        LocalDate cellDate = monthStart.withDayOfMonth(day);
+                    %>
+                    <a class="day-cell <%= cellDate.equals(today) ? "today" : "" %> <%= cellDate.equals(selectedDate) ? "selected" : "" %>"
+                       href="?selectedDate=<%= cellDate %>">
+                        <div class="day-number"><%= day %></div>
+                        <div class="day-events"><%= perDay.getOrDefault(cellDate, 0) %> task(s)</div>
+                    </a>
+                    <% } %>
                 </div>
             </div>
 
-            <div class="calendar-grid">
-                <div class="day-header">Sun</div>
-                <div class="day-header">Mon</div>
-                <div class="day-header">Tue</div>
-                <div class="day-header">Wed</div>
-                <div class="day-header">Thu</div>
-                <div class="day-header">Fri</div>
-                <div class="day-header">Sat</div>
-
-                <div class="day-cell other-month"><div class="day-number">1</div></div>
-                <div class="day-cell other-month"><div class="day-number">2</div></div>
-                <div class="day-cell other-month"><div class="day-number">3</div></div>
-                <div class="day-cell other-month"><div class="day-number">4</div></div>
-                <div class="day-cell other-month"><div class="day-number">5</div></div>
-                <div class="day-cell other-month"><div class="day-number">6</div></div>
-                <div class="day-cell"><div class="day-number">7</div><div class="day-events">2 tasks</div></div>
-
-                <div class="day-cell"><div class="day-number">8</div></div>
-                <div class="day-cell"><div class="day-number">9</div></div>
-                <div class="day-cell"><div class="day-number">10</div><div class="day-events">1 task</div></div>
-                <div class="day-cell"><div class="day-number">11</div></div>
-                <div class="day-cell"><div class="day-number">12</div><div class="day-events">3 tasks</div></div>
-                <div class="day-cell"><div class="day-number">13</div></div>
-                <div class="day-cell"><div class="day-number">14</div></div>
-
-                <div class="day-cell"><div class="day-number">15</div></div>
-                <div class="day-cell"><div class="day-number">16</div></div>
-                <div class="day-cell"><div class="day-number">17</div><div class="day-events">2 tasks</div></div>
-                <div class="day-cell"><div class="day-number">18</div></div>
-                <div class="day-cell"><div class="day-number">19</div></div>
-                <div class="day-cell"><div class="day-number">20</div></div>
-                <div class="day-cell"><div class="day-number">21</div></div>
-
-                <div class="day-cell"><div class="day-number">22</div></div>
-                <div class="day-cell"><div class="day-number">23</div></div>
-                <div class="day-cell"><div class="day-number">24</div></div>
-                <div class="day-cell today"><div class="day-number">25</div><div class="day-events">4 tasks</div></div>
-                <div class="day-cell"><div class="day-number">26</div><div class="day-events">2 tasks</div></div>
-                <div class="day-cell"><div class="day-number">27</div></div>
-                <div class="day-cell"><div class="day-number">28</div></div>
-
-                <div class="day-cell"><div class="day-number">29</div></div>
-                <div class="day-cell"><div class="day-number">30</div></div>
-                <div class="day-cell"><div class="day-number">31</div></div>
-            </div>
-        </div>
-
-        <!-- TODAY'S TIMELINE -->
-        <div class="schedule-container">
-            <h3>Today's Schedule (Mar 25)</h3>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-time">10:00 AM - 11:00 AM</div>
-                    <div class="timeline-title">Oil Change - Toyota Camry</div>
-                    <div class="timeline-customer">Customer: Ahmad Faisal</div>
-                </div>
-
-                <div class="timeline-item in-progress">
-                    <div class="timeline-time">11:30 AM - 1:00 PM</div>
-                    <div class="timeline-title">Brake Inspection - Honda CR-V</div>
-                    <div class="timeline-customer">Customer: Nurul Huda (Currently Working)</div>
-                </div>
-
-                <div class="timeline-item">
-                    <div class="timeline-time">2:00 PM - 3:00 PM</div>
-                    <div class="timeline-title">AC Service - Nissan X-Trail</div>
-                    <div class="timeline-customer">Customer: Siti Aminah</div>
-                </div>
-
-                <div class="timeline-item completed">
-                    <div class="timeline-time">3:30 PM - 4:00 PM</div>
-                    <div class="timeline-title">Battery Check - BMW 3 Series</div>
-                    <div class="timeline-customer">Customer: Zahra Rahman (Completed)</div>
+            <div class="schedule-container timeline-panel">
+                <h3>Timeline For <%= selectedDate %></h3>
+                <div class="timeline">
+                    <% boolean hasSelectedDay = false;
+                       for (Appointments appointment : appointments) {
+                           if (!selectedDate.equals(appointment.getAppointment_date())) {
+                               continue;
+                           }
+                           hasSelectedDay = true;
+                           UsersEntity customer = appointment.getCustomer_id() == null ? null : userFacade.find(appointment.getCustomer_id());
+                    %>
+                    <div class="timeline-item">
+                        <div><strong><%= appointment.getAppointment_time() %></strong></div>
+                        <div>#APT<%= appointment.getAppointment_id() %> - <%= customer == null ? "Customer" : customer.getName() %></div>
+                        <div style="color:#64748b;"><%= appointment.getCustomer_notes() == null || appointment.getCustomer_notes().trim().isEmpty() ? "No booking note provided." : appointment.getCustomer_notes() %></div>
+                        <span class="timeline-status"><%= appointment.getStatus() %></span>
+                    </div>
+                    <% }
+                       if (!hasSelectedDay) { %>
+                    <div class="timeline-item">No appointments are scheduled for <%= selectedDate %>.</div>
+                    <% } %>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
 </body>
 </html>

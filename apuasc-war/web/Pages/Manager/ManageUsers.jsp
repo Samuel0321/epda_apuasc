@@ -1,36 +1,65 @@
-<%--
-    Document   : ManageUsers
-    Created on : Mar 24, 2026
-    Author     : pinju
---%>
+<%@page import="java.util.List,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
+<%
+    UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
+    if (currentUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
+    String currentRole = currentUser.getRole() == null ? "" : currentUser.getRole().trim().toLowerCase();
+    if (!"manager".equals(currentRole)) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
 
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
+    List<UsersEntity> directoryUsers;
+    boolean canToggleManagerAccess;
+
+    if (request.getAttribute("currentUser") != null) {
+        currentUser = (UsersEntity) request.getAttribute("currentUser");
+        directoryUsers = request.getAttribute("directoryUsers") != null
+                ? (List<UsersEntity>) request.getAttribute("directoryUsers")
+                : (List<UsersEntity>) request.getAttribute("staffUsers");
+        canToggleManagerAccess = (Boolean) request.getAttribute("canToggleManagerAccess");
+    } else {
+        UsersEntityFacade userFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+        currentUser = userFacade.find(currentUser.getId());
+        directoryUsers = userFacade.findDirectoryUsers();
+        canToggleManagerAccess = currentUser.getHave_Manager_access() != null && currentUser.getHave_Manager_access() == 1;
+    }
+    session.setAttribute("user", currentUser);
+%>
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Manage Users</title>
+    <title>User Directory</title>
     <link rel="stylesheet" href="../../Styles/main.css">
     <style>
-        .table-container {
+        .table-container,
+        .modal-card {
             background: white;
-            padding: 20px;
-            border-radius: 14px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            padding: 22px;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
         }
 
         .table-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            gap: 10px;
+            gap: 12px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
         }
 
-        .search-box {
-            flex: 1;
+        .search-box,
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
             padding: 10px 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border: 1px solid #dbe2ea;
+            border-radius: 10px;
+            box-sizing: border-box;
             font-size: 14px;
         }
 
@@ -39,76 +68,123 @@
             border-collapse: collapse;
         }
 
-        table thead {
-            background: #f8fafc;
-        }
-
-        table th {
-            padding: 12px;
+        th, td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #e2e8f0;
             text-align: left;
-            font-weight: 600;
-            color: #1e293b;
-            border-bottom: 2px solid #e2e8f0;
+            vertical-align: top;
         }
 
-        table td {
-            padding: 12px;
-            border-bottom: 1px solid #f1f5f9;
+        th {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
         }
 
-        table tbody tr:hover {
-            background: #f8fafc;
-        }
-
-        .badge {
-            display: inline-block;
+        .role-badge,
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
             padding: 4px 10px;
-            border-radius: 20px;
+            border-radius: 999px;
             font-size: 12px;
-            font-weight: 500;
-        }
-
-        .badge-active {
-            background: #bbf7d0;
-            color: #166534;
-        }
-
-        .badge-inactive {
-            background: #d1d5db;
-            color: #374151;
+            font-weight: 600;
         }
 
         .role-badge {
             background: #dbeafe;
-            color: #1e40af;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
+            color: #1d4ed8;
+        }
+
+        .status-badge {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .access-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .access-toggle-form {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 54px;
+            height: 30px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            inset: 0;
+            cursor: pointer;
+            background: #cbd5e1;
+            transition: 0.2s ease;
+            border-radius: 999px;
+        }
+
+        .slider:before {
+            content: "";
+            position: absolute;
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            top: 4px;
+            background: white;
+            transition: 0.2s ease;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+        }
+
+        .switch input:checked + .slider {
+            background: #2563eb;
+        }
+
+        .switch input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .switch input:disabled + .slider {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        .toggle-form,
+        .inline-form {
+            display: inline;
         }
 
         .action-buttons {
             display: flex;
-            gap: 5px;
+            gap: 6px;
+            flex-wrap: wrap;
         }
 
         .btn-small {
-            padding: 6px 10px;
+            padding: 8px 10px;
             border: none;
-            border-radius: 6px;
-            cursor: pointer;
+            border-radius: 8px;
             font-size: 12px;
-            font-weight: 500;
-            transition: all 0.3s ease;
+            font-weight: 600;
+            cursor: pointer;
         }
 
-        .btn-info {
+        .btn-view {
             background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .btn-info:hover {
-            background: #bfdbfe;
+            color: #1d4ed8;
         }
 
         .btn-edit {
@@ -116,222 +192,372 @@
             color: #92400e;
         }
 
-        .btn-edit:hover {
-            background: #fde68a;
-        }
-
         .btn-delete {
-            background: #fecaca;
-            color: #7f1d1d;
+            background: #fee2e2;
+            color: #b91c1c;
         }
 
-        .btn-delete:hover {
-            background: #f87171;
+        .helper-text {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 6px;
         }
 
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+        .access-select {
+            max-width: 220px;
         }
 
-        .filter-btn {
-            padding: 8px 14px;
-            border: 1px solid #e2e8f0;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
+        .alert {
+            margin-bottom: 18px;
+            padding: 12px 14px;
+            border-radius: 12px;
             font-size: 14px;
-            transition: all 0.3s ease;
         }
 
-        .filter-btn:hover,
-        .filter-btn.active {
+        .alert-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            z-index: 1000;
+            padding: 30px 16px;
+            overflow-y: auto;
+        }
+
+        .modal.show {
+            display: block;
+        }
+
+        .modal-card {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+        }
+
+        .close-btn {
+            border: none;
+            background: #e2e8f0;
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+        }
+
+        .detail-grid,
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .detail-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 14px;
+        }
+
+        .detail-card strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .full-span {
+            grid-column: 1 / -1;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .btn-primary {
             background: #2563eb;
             color: white;
-            border-color: #2563eb;
         }
 
-        .toggle-switch {
-            position: relative;
-            width: 45px;
-            height: 24px;
-            background: #cbd5e1;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: background 0.3s;
-            border: none;
-            outline: none;
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
         }
 
-        .toggle-switch.active {
-            background: #2563eb;
-        }
-
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            top: 2px;
-            left: 2px;
-            transition: left 0.3s;
-        }
-
-        .toggle-switch.active::after {
-            left: 23px;
+        @media (max-width: 900px) {
+            .detail-grid,
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
-
 <body>
-
 <div class="layout">
-    <!-- Sidebar -->
     <jsp:include page="../../Component/Sidebar.jsp" />
 
-    <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; MANAGE USERS
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">M</div>
-                    <div class="user-info">
-                        <div class="name">Manager</div>
-                        <div class="email">manager@autofix.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="USER DIRECTORY" />
+        </jsp:include>
 
-        <!-- HEADER -->
         <div class="header-row">
             <div class="header-text">
-                <h1>User Management</h1>
-                <p>View and manage system users</p>
+                <h1>User Directory</h1>
+                <p>View all staff and customers, update profiles, and control manager access for manager-level accounts.</p>
             </div>
             <div class="actions">
-                <button class="btn btn-primary">+ Add New User</button>
+                <button class="btn btn-light" onclick="window.location.href='../Common/Profile.jsp'">My Profile</button>
             </div>
         </div>
 
-        <!-- FILTERS -->
-        <div class="filters">
-            <button class="filter-btn active">All</button>
-            <button class="filter-btn">Receptionist</button>
-            <button class="filter-btn">Technician</button>
-            <button class="filter-btn">Manager</button>
-            <button class="filter-btn">Active</button>
-            <button class="filter-btn">Inactive</button>
-        </div>
+        <% if (request.getParameter("updated") != null) { %>
+            <div class="alert alert-success">User details updated successfully.</div>
+        <% } else if (request.getParameter("created") != null) { %>
+            <div class="alert alert-success">User account created successfully.</div>
+        <% } else if (request.getParameter("deleted") != null) { %>
+            <div class="alert alert-success">User account deleted successfully.</div>
+        <% } else if (request.getParameter("accessUpdated") != null) { %>
+            <div class="alert alert-success">Manager access updated successfully.</div>
+        <% } else if ("ProtectedManager".equals(request.getParameter("error"))) { %>
+            <div class="alert alert-error">Managers without manager access cannot edit managers who already have manager access.</div>
+        <% } else if (request.getParameter("error") != null) { %>
+            <div class="alert alert-error">The requested manager action could not be completed.</div>
+        <% } %>
 
-        <!-- TABLE -->
         <div class="table-container">
             <div class="table-header">
-                <input type="text" class="search-box" placeholder="Search users by name or email...">
+                <input id="staffSearch" type="text" class="search-box" placeholder="Search users by name, email, phone, or role...">
+                <div class="helper-text">
+                    <% if (canToggleManagerAccess) { %>
+                        You can toggle manager access for other manager-level accounts.
+                    <% } else { %>
+                        Manager access controls are disabled for your account.
+                    <% } %>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="window.location.href='<%= request.getContextPath() %>/RegisterServlet'">Register User</button>
             </div>
 
-            <table>
+            <table id="staffTable">
                 <thead>
                     <tr>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
-                        <th>Status</th>
+                        <th>Phone</th>
                         <th>Manager Access</th>
-                        <th>Joined</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>Ahmad Hassan</td>
-                        <td>ahmad@autofix.com</td>
-                        <td><span class="role-badge">Receptionist</span></td>
-                        <td><span class="badge badge-active">Active</span></td>
-                        <td>—</td>
-                        <td>Jan 15, 2026</td>
+                    <% for (UsersEntity staff : directoryUsers) {
+                        boolean managerLike = "manager".equalsIgnoreCase(staff.getRole());
+                        boolean protectedManager = managerLike
+                                && staff.getHave_Manager_access() != null
+                                && staff.getHave_Manager_access() == 1
+                                && !canToggleManagerAccess;
+                    %>
+                    <tr class="staff-row"
+                        data-name="<%= staff.getName() %>"
+                        data-email="<%= staff.getEmail() %>"
+                        data-phone="<%= staff.getPhone_number() == null ? "" : staff.getPhone_number() %>"
+                        data-role="<%= staff.getRole() %>"
+                        data-gender="<%= staff.getGender() == null ? "" : staff.getGender() %>"
+                        data-country="<%= staff.getOrigin_country() == null ? "" : staff.getOrigin_country() %>"
+                        data-address="<%= staff.getHome_address() == null ? "" : staff.getHome_address() %>"
+                        data-manager-access="<%= staff.getHave_Manager_access() != null && staff.getHave_Manager_access() == 1 ? "1" : "0" %>">
+                        <td><strong><%= staff.getName() %></strong></td>
+                        <td><%= staff.getEmail() %></td>
+                        <td><span class="role-badge"><%= staff.getRole() %></span></td>
+                        <td><%= staff.getPhone_number() == null || staff.getPhone_number().isEmpty() ? "-" : staff.getPhone_number() %></td>
+                        <td>
+                            <% if (managerLike) { %>
+                                <div class="access-pill">
+                                    <form class="access-toggle-form" method="post" action="<%= request.getContextPath() %>/ManagerUserServlet">
+                                        <input type="hidden" name="action" value="toggleManagerAccess">
+                                        <input type="hidden" name="userId" value="<%= staff.getId() %>">
+                                        <label class="switch" title="<%= canToggleManagerAccess && !staff.getId().equals(currentUser.getId()) ? "Toggle manager access" : "Manager access toggle unavailable" %>">
+                                            <input type="checkbox"
+                                                   <%= staff.getHave_Manager_access() != null && staff.getHave_Manager_access() == 1 ? "checked" : "" %>
+                                                   <%= (!canToggleManagerAccess || staff.getId().equals(currentUser.getId())) ? "disabled" : "" %>
+                                                   onchange="this.form.submit()">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </form>
+                                    <span><%= staff.getHave_Manager_access() != null && staff.getHave_Manager_access() == 1 ? "Enabled" : "Disabled" %></span>
+                                </div>
+                            <% } else { %>
+                                <span class="helper-text">Not applicable</span>
+                            <% } %>
+                        </td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-edit">Edit</button>
-                                <button class="btn-small btn-delete">Delete</button>
+                                <button type="button" class="btn-small btn-view" onclick="openViewModal(this)">View</button>
+                                <% if (protectedManager) { %>
+                                <button type="button" class="btn-small btn-edit" disabled title="Manager access is required to edit this manager">Edit</button>
+                                <% } else { %>
+                                <button type="button" class="btn-small btn-edit" onclick="openEditModal(this, '<%= staff.getId() %>')">Edit</button>
+                                <% } %>
+                                <% if (!staff.getId().equals(currentUser.getId())) { %>
+                                <form class="inline-form" method="post" action="<%= request.getContextPath() %>/ManagerUserServlet" onsubmit="return confirm('Delete this staff account?');">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="userId" value="<%= staff.getId() %>">
+                                    <button type="submit" class="btn-small btn-delete">Delete</button>
+                                </form>
+                                <% } %>
                             </div>
                         </td>
                     </tr>
-                    <tr>
-                        <td>Nurul Amin</td>
-                        <td>nurul@autofix.com</td>
-                        <td><span class="role-badge">Technician</span></td>
-                        <td><span class="badge badge-active">Active</span></td>
-                        <td>—</td>
-                        <td>Feb 01, 2026</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-edit">Edit</button>
-                                <button class="btn-small btn-delete">Delete</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Sarah Manager</td>
-                        <td>sarah@autofix.com</td>
-                        <td><span class="role-badge" style="background: #f3d7f1; color: #c2185b;">Manager</span></td>
-                        <td><span class="badge badge-active">Active</span></td>
-                        <td><button class="toggle-switch active" title="Can create/manage managers"></button></td>
-                        <td>Dec 01, 2025</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-edit">Edit</button>
-                                <button class="btn-small btn-delete">Delete</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Siti Aminah</td>
-                        <td>siti@autofix.com</td>
-                        <td><span class="role-badge">Receptionist</span></td>
-                        <td><span class="badge badge-active">Active</span></td>
-                        <td>—</td>
-                        <td>Jan 20, 2026</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-edit">Edit</button>
-                                <button class="btn-small btn-delete">Delete</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>John Smith</td>
-                        <td>john@autofix.com</td>
-                        <td><span class="role-badge" style="background: #f3d7f1; color: #c2185b;">Manager</span></td>
-                        <td><span class="badge badge-inactive">Inactive</span></td>
-                        <td><button class="toggle-switch" title="Cannot create/manage managers"></button></td>
-                        <td>Dec 10, 2025</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-edit">Edit</button>
-                                <button class="btn-small btn-delete">Delete</button>
-                            </div>
-                        </td>
-                    </tr>
+                    <% } %>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
+<div id="viewModal" class="modal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>User Profile</h3>
+            <button class="close-btn" type="button" onclick="closeModal('viewModal')">Close</button>
+        </div>
+        <div class="detail-grid">
+            <div class="detail-card"><strong>Name</strong><span id="viewName"></span></div>
+            <div class="detail-card"><strong>Email</strong><span id="viewEmail"></span></div>
+            <div class="detail-card"><strong>Role</strong><span id="viewRole"></span></div>
+            <div class="detail-card"><strong>Phone</strong><span id="viewPhone"></span></div>
+            <div class="detail-card"><strong>Gender</strong><span id="viewGender"></span></div>
+            <div class="detail-card"><strong>Manager Access</strong><span id="viewManagerAccess"></span></div>
+            <div class="detail-card full-span"><strong>Country</strong><span id="viewCountry"></span></div>
+            <div class="detail-card full-span"><strong>Address</strong><span id="viewAddress"></span></div>
+        </div>
+    </div>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Edit User</h3>
+            <button class="close-btn" type="button" onclick="closeModal('editModal')">Close</button>
+        </div>
+        <form method="post" action="<%= request.getContextPath() %>/ManagerUserServlet">
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="userId" id="editUserId">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" id="editName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" id="editEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" name="phone" id="editPhone">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select name="role" id="editRole">
+                        <option value="receptionist">Receptionist</option>
+                        <option value="technician">Technician</option>
+                        <% if (canToggleManagerAccess) { %>
+                        <option value="manager">Manager</option>
+                        <% } %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Gender</label>
+                    <input type="text" name="gender" id="editGender">
+                </div>
+                <div class="form-group">
+                    <label>Origin Country</label>
+                    <input type="text" name="origin_country" id="editCountry">
+                </div>
+                <div class="form-group full-span">
+                    <label>Home Address</label>
+                    <textarea name="home_address" id="editAddress" rows="3"></textarea>
+                </div>
+                <div class="form-group full-span">
+                    <label>Manager Access</label>
+                    <input type="text" id="editManagerAccessDisplay" value="Use the toggle in the table to change manager access." readonly>
+                    <div class="helper-text">Manager access can only be changed from the toggle in the user directory table.</div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-small btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+                <button type="submit" class="btn-small btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById("staffSearch").addEventListener("input", function () {
+        const keyword = this.value.toLowerCase();
+        document.querySelectorAll("#staffTable tbody tr").forEach(function (row) {
+            row.style.display = row.innerText.toLowerCase().includes(keyword) ? "" : "none";
+        });
+    });
+
+    function openViewModal(button) {
+        const row = button.closest("tr");
+        document.getElementById("viewName").textContent = row.dataset.name || "-";
+        document.getElementById("viewEmail").textContent = row.dataset.email || "-";
+        document.getElementById("viewRole").textContent = row.dataset.role || "-";
+        document.getElementById("viewPhone").textContent = row.dataset.phone || "-";
+        document.getElementById("viewGender").textContent = row.dataset.gender || "-";
+        document.getElementById("viewCountry").textContent = row.dataset.country || "-";
+        document.getElementById("viewAddress").textContent = row.dataset.address || "-";
+        document.getElementById("viewManagerAccess").textContent = row.dataset.managerAccess === "1" ? "Enabled" : "Disabled";
+        document.getElementById("viewModal").classList.add("show");
+    }
+
+    function openEditModal(button, userId) {
+        const row = button.closest("tr");
+        document.getElementById("editUserId").value = userId;
+        document.getElementById("editName").value = row.dataset.name || "";
+        document.getElementById("editEmail").value = row.dataset.email || "";
+        document.getElementById("editPhone").value = row.dataset.phone || "";
+        document.getElementById("editRole").value = row.dataset.role || "receptionist";
+        document.getElementById("editGender").value = row.dataset.gender || "";
+        document.getElementById("editCountry").value = row.dataset.country || "";
+        document.getElementById("editAddress").value = row.dataset.address || "";
+        document.getElementById("editManagerAccessDisplay").value =
+            row.dataset.managerAccess === "1" ? "Enabled in table toggle" : "Disabled in table toggle";
+
+        document.getElementById("editModal").classList.add("show");
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove("show");
+    }
+
+    window.addEventListener("click", function (event) {
+        document.querySelectorAll(".modal").forEach(function (modal) {
+            if (event.target === modal) {
+                modal.classList.remove("show");
+            }
+        });
+    });
+</script>
 </body>
 </html>

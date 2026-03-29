@@ -1,268 +1,118 @@
-<%--
-    Document   : Profile
-    Created on : Mar 24, 2026
-    Author     : pinju
---%>
-
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@page import="models.UsersEntity"%>
+<%
+    UsersEntity profileUser = (UsersEntity) session.getAttribute("user");
+    if (profileUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
     <title>My Profile</title>
-    <link rel="stylesheet" href="../../Styles/main.css">
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/Styles/main.css">
     <style>
-        .profile-container {
-            background: white;
-            border-radius: 14px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            overflow: hidden;
-        }
-
-        .profile-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px 30px;
-            text-align: center;
-            position: relative;
-        }
-
-        .profile-avatar {
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 3px solid white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 50px;
-            margin: 0 auto 15px;
-        }
-
-        .profile-header h1 {
-            font-size: 28px;
-            margin-bottom: 5px;
-            font-weight: 700;
-        }
-
-        .profile-header p {
-            opacity: 0.9;
-            font-size: 16px;
-        }
-
-        .profile-body {
-            padding: 40px;
-            max-width: 700px;
-        }
-
-        .profile-section {
-            margin-bottom: 35px;
-        }
-
-        .section-title {
-            font-size: 13px;
-            color: #64748b;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            font-weight: 700;
-        }
-
-        .profile-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .profile-item:last-child {
-            border-bottom: none;
-        }
-
-        .profile-label {
-            color: #64748b;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .profile-value {
-            color: #1e293b;
-            font-weight: 600;
-            font-size: 15px;
-        }
-
-        .badge-role {
-            display: inline-block;
-            background: #dbeafe;
-            color: #1e40af;
-            padding: 6px 14px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .badge-status {
-            display: inline-block;
-            background: #bbf7d0;
-            color: #166534;
-            padding: 6px 14px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .profile-actions {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-            padding-top: 30px;
-            border-top: 1px solid #f1f5f9;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
-            background: #2563eb;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-secondary {
-            background: #e5e7eb;
-            color: #1e293b;
-        }
-
-        .btn-secondary:hover {
-            background: #d1d5db;
-            transform: translateY(-2px);
-        }
-
-        .close-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .back-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #475569;
-            cursor: pointer;
-            padding: 5px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-weight: 600;
-        }
-
-        .back-btn:hover {
-            color: #1e293b;
-        }
+        .profile-container { background: white; border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden; }
+        .profile-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+        .profile-avatar { width: 100px; height: 100px; background: rgba(255,255,255,0.2); border: 3px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 42px; margin: 0 auto 15px; }
+        .profile-header h1 { font-size: 28px; margin: 0 0 5px; }
+        .profile-header p { opacity: 0.9; font-size: 16px; margin: 0; text-transform: capitalize; }
+        .profile-body { padding: 30px; }
+        .message { margin-bottom: 20px; padding: 12px 14px; border-radius: 8px; font-size: 14px; }
+        .message.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #1e293b; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .profile-actions { display: flex; gap: 15px; margin-top: 20px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-secondary { background: #e5e7eb; color: #1e293b; }
+        .readonly-box { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; color: #475569; }
+        @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
-
 <body>
-
 <div class="layout">
-    <!-- Sidebar -->
     <jsp:include page="../../Component/Sidebar.jsp" />
-
-    <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; MY PROFILE
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">A</div>
-                    <div class="user-info">
-                        <div class="name">Ahmad Hassan</div>
-                        <div class="email">ahmad@autofix.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="MY PROFILE" />
+        </jsp:include>
 
-        <!-- HEADER -->
         <div class="header-row">
             <div class="header-text">
                 <h1>My Profile</h1>
-                <p>View and manage your account information</p>
+                <p>View and update your account information</p>
             </div>
         </div>
 
-        <!-- PROFILE CONTAINER -->
         <div class="profile-container">
             <div class="profile-header">
-                <div class="profile-avatar">👤</div>
-                <h1>Ahmad Hassan</h1>
-                <p>Receptionist / Counter Staff</p>
+                <div class="profile-avatar"><%= profileUser.getName() != null && !profileUser.getName().isEmpty() ? profileUser.getName().substring(0,1).toUpperCase() : "U" %></div>
+                <h1><%= profileUser.getName() %></h1>
+                <p><%= profileUser.getRole() != null ? profileUser.getRole().replace("_", " ") : "user" %></p>
             </div>
 
             <div class="profile-body">
-                <!-- Personal Information -->
-                <div class="profile-section">
-                    <div class="section-title">📋 Personal Information</div>
-                    <div class="profile-item">
-                        <span class="profile-label">Email</span>
-                        <span class="profile-value">ahmad@autofix.com</span>
-                    </div>
-                    <div class="profile-item">
-                        <span class="profile-label">Phone</span>
-                        <span class="profile-value">+60-12-345-6789</span>
-                    </div>
-                    <div class="profile-item">
-                        <span class="profile-label">Employee ID</span>
-                        <span class="profile-value">EMP-001</span>
-                    </div>
-                </div>
+                <% if ("1".equals(request.getParameter("updated"))) { %>
+                    <div class="message success">Profile updated successfully.</div>
+                <% } %>
 
-                <!-- Role & Status -->
-                <div class="profile-section">
-                    <div class="section-title">👑 Role & Permissions</div>
-                    <div class="profile-item">
-                        <span class="profile-label">Role</span>
-                        <span class="badge-role">Receptionist</span>
+                <form action="<%= request.getContextPath() %>/UpdateProfileServlet" method="post">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="name">Full Name</label>
+                            <input type="text" id="name" name="name" value="<%= profileUser.getName() != null ? profileUser.getName() : "" %>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" value="<%= profileUser.getEmail() != null ? profileUser.getEmail() : "" %>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone</label>
+                            <input type="text" id="phone" name="phone" value="<%= profileUser.getPhone_number() != null ? profileUser.getPhone_number() : "" %>">
+                        </div>
+                        <div class="form-group">
+                            <label for="gender">Gender</label>
+                            <select id="gender" name="gender">
+                                <option value="">Select Gender</option>
+                                <option value="male" <%= "male".equalsIgnoreCase(profileUser.getGender()) ? "selected" : "" %>>Male</option>
+                                <option value="female" <%= "female".equalsIgnoreCase(profileUser.getGender()) ? "selected" : "" %>>Female</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="origin_country">Origin Country</label>
+                            <input type="text" id="origin_country" name="origin_country" value="<%= profileUser.getOrigin_country() != null ? profileUser.getOrigin_country() : "" %>">
+                        </div>
+                        <div class="form-group">
+                            <label for="identity_number">IC / Passport</label>
+                            <input type="text" id="identity_number" name="identity_number" value="<%= profileUser.getIC_number_passportnumber() != null ? profileUser.getIC_number_passportnumber() : "" %>">
+                        </div>
+                        <div class="form-group full">
+                            <label for="home_address">Home Address</label>
+                            <input type="text" id="home_address" name="home_address" value="<%= profileUser.getHome_address() != null ? profileUser.getHome_address() : "" %>">
+                        </div>
+                        <div class="form-group">
+                            <label>Role</label>
+                            <div class="readonly-box"><%= profileUser.getRole() != null ? profileUser.getRole().replace("_", " ") : "" %></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="new_password">New Password</label>
+                            <input type="password" id="new_password" name="new_password" placeholder="Leave blank to keep current password">
+                        </div>
                     </div>
-                    <div class="profile-item">
-                        <span class="profile-label">Status</span>
-                        <span class="badge-status">Active</span>
-                    </div>
-                    <div class="profile-item">
-                        <span class="profile-label">Joined Date</span>
-                        <span class="profile-value">January 15, 2026</span>
-                    </div>
-                </div>
 
-                <!-- Account Actions -->
-                <div class="profile-actions">
-                    <button class="btn btn-primary">✏️ Edit Profile</button>
-                    <button class="btn btn-secondary">🔒 Change Password</button>
-                </div>
+                    <div class="profile-actions">
+                        <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Profile</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
-
 </body>
 </html>

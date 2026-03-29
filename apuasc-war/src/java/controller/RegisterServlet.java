@@ -1,146 +1,179 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package controller;
 
 import jakarta.ejb.EJB;
-import utils.CountryLoader;
-import java.io.IOException;
-import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import java.util.List;
 import models.UsersEntity;
 import models.UsersEntityFacade;
 import utils.CountryLoader;
 import utils.hashPassword;
 
-/**
- *
- * @author Samuel Chong
- */
 public class RegisterServlet extends HttpServlet {
-    
+
     @EJB
     private UsersEntityFacade userFacade;
 
-    /**
-     * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
-     * methods.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet RegisterServlet</title>");
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>Servlet RegisterServlet at " + request.getContextPath() + "</h1>");
-            out.println("</body>");
-            out.println("</html>");
-        }
-    }
-
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
-    /**
-     * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-//        processRequest(request, response);
-        
-         // Load countries from XML
-        List<CountryLoader.Country> countries = CountryLoader.loadCountries();
-
-        // Pass to JSP
-        request.setAttribute("countries", countries);
-        request.getRequestDispatcher("register.jsp").forward(request, response);
+        loadCountries(request);
+        applyRolePermissions(request);
+        request.getRequestDispatcher("/register.jsp").forward(request, response);
     }
 
-    /**
-     * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        loadCountries(request);
+
+        String name = trim(request.getParameter("name"));
+        String email = trim(request.getParameter("email")).toLowerCase();
+        String password = trim(request.getParameter("password"));
+        String role = normalizeRole(request.getParameter("role"));
+        UsersEntity currentUser = getCurrentUser(request);
+
+        if (name.isEmpty() || email.isEmpty() || password.isEmpty() || role.isEmpty()) {
+            request.setAttribute("errorMessage", "Name, email, password, and role are required.");
+            applyRolePermissions(request);
+            request.getRequestDispatcher("/register.jsp").forward(request, response);
+            return;
+        }
+
+        if (!isAllowedRegistrationRole(currentUser, role)) {
+            request.setAttribute("errorMessage", "You are not allowed to create that account type.");
+            applyRolePermissions(request);
+            request.getRequestDispatcher("/register.jsp").forward(request, response);
+            return;
+        }
+
+        if (userFacade.emailExists(email)) {
+            request.setAttribute("errorMessage", "Email already exists.");
+            applyRolePermissions(request);
+            request.getRequestDispatcher("/register.jsp").forward(request, response);
+            return;
+        }
+
         UsersEntity user = new UsersEntity();
-        user.setName(request.getParameter("name"));
-
-        // Hash the password before saving
-        String rawPassword = request.getParameter("password");
-        String hashedPassword = hashPassword.hashPassword(rawPassword);
-        user.setPassword(hashedPassword);
-
-        user.setGender(request.getParameter("gender"));
-        user.setIs_malaysian(Integer.valueOf(request.getParameter("is_malaysian")));
-        user.setOrigin_country(request.getParameter("origin_country"));
-
-        try {
-            user.setCountry_code(Integer.valueOf(request.getParameter("country_code")));
-        } catch (NumberFormatException e) {
-            user.setCountry_code(null);
-        }
-
-        try {
-            user.setPhone_number(String.valueOf(request.getParameter("phone")));
-        } catch (NumberFormatException e) {
-            user.setPhone_number(null);
-        }
-
-        String ic = request.getParameter("ic_passport");
-        String passport = request.getParameter("passport_number");
-        if (ic != null && !ic.isEmpty()) {
-            user.setIC_number_passportnumber(ic);
-        } else if (passport != null && !passport.isEmpty()) {
-            user.setIC_number_passportnumber(passport);
-        }
-
-        user.setEmail(request.getParameter("email"));
-        user.setHome_address(request.getParameter("user_address"));
-        user.setRole(request.getParameter("role"));
-        user.setHave_Manager_access(Integer.valueOf(request.getParameter("manager_access")));
-        user.setIs_Super_Admin(Integer.valueOf(request.getParameter("is_super_admin")));
+        user.setName(name);
+        user.setEmail(email);
+        user.setPassword(hashPassword.hashPassword(password));
+        user.setGender(trim(request.getParameter("gender")));
+        user.setIs_malaysian(parseInteger(request.getParameter("is_malaysian"), 1));
+        user.setOrigin_country(trim(request.getParameter("origin_country")));
+        user.setCountry_code(parseNullableInteger(request.getParameter("country_code")));
+        user.setPhone_number(trim(request.getParameter("phone")));
+        user.setIC_number_passportnumber(resolveIdentity(request));
+        user.setHome_address(trim(request.getParameter("user_address")));
+        user.setRole(role);
+        user.setHave_Manager_access(resolveManagerAccess(role, currentUser));
+        user.setIs_Super_Admin(resolveSuperAdmin(role, currentUser));
 
         try {
             userFacade.create(user);
-            response.sendRedirect("loginjsp.jsp");
+            if (currentUser != null && isManager(currentUser.getRole())) {
+                response.sendRedirect(request.getContextPath() + "/Pages/Manager/ManageUsers.jsp?created=1");
+            } else {
+                response.sendRedirect(request.getContextPath() + "/loginjsp.jsp?registered=1");
+            }
         } catch (Exception e) {
-            e.printStackTrace();
-            response.sendRedirect("register.jsp?error=Registration failed");
+            request.setAttribute("errorMessage", "Registration failed.");
+            applyRolePermissions(request);
+            request.getRequestDispatcher("/register.jsp").forward(request, response);
         }
     }
 
-    /**
-     * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
-     */
-    @Override
-    public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
+    private void loadCountries(HttpServletRequest request) {
+        List<CountryLoader.Country> countries = CountryLoader.loadCountries();
+        request.setAttribute("countries", countries);
+    }
 
+    private void applyRolePermissions(HttpServletRequest request) {
+        UsersEntity currentUser = getCurrentUser(request);
+        boolean managerSession = currentUser != null && isManager(currentUser.getRole());
+        boolean canCreateManager = canGrantManagerAccess(currentUser);
+
+        request.setAttribute("managerRegistration", managerSession);
+        request.setAttribute("canCreateManagerAccounts", canCreateManager);
+    }
+
+    private String resolveIdentity(HttpServletRequest request) {
+        String ic = trim(request.getParameter("ic_passport"));
+        if (!ic.isEmpty()) {
+            return ic;
+        }
+        return trim(request.getParameter("passport_number"));
+    }
+
+    private Integer parseNullableInteger(String value) {
+        try {
+            if (value == null || value.trim().isEmpty()) {
+                return null;
+            }
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Integer parseInteger(String value, Integer defaultValue) {
+        Integer parsed = parseNullableInteger(value);
+        return parsed == null ? defaultValue : parsed;
+    }
+
+    private UsersEntity getCurrentUser(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null || !(session.getAttribute("user") instanceof UsersEntity)) {
+            return null;
+        }
+        return userFacade.find(((UsersEntity) session.getAttribute("user")).getId());
+    }
+
+    private boolean isAllowedRegistrationRole(UsersEntity currentUser, String role) {
+        if (role == null || role.isEmpty()) {
+            return false;
+        }
+
+        if (currentUser == null || !isManager(currentUser.getRole())) {
+            return "customer".equals(role);
+        }
+
+        if ("receptionist".equals(role) || "technician".equals(role)) {
+            return true;
+        }
+        return "manager".equals(role) && canGrantManagerAccess(currentUser);
+    }
+
+    private Integer resolveManagerAccess(String role, UsersEntity currentUser) {
+        return 0;
+    }
+
+    private Integer resolveSuperAdmin(String role, UsersEntity currentUser) {
+        return 0;
+    }
+
+    private boolean canGrantManagerAccess(UsersEntity user) {
+        return user != null && user.getHave_Manager_access() != null && user.getHave_Manager_access() == 1;
+    }
+
+    private boolean isManager(String role) {
+        String normalized = trim(role).toLowerCase();
+        return "manager".equals(normalized);
+    }
+
+    private String normalizeRole(String role) {
+        String normalized = trim(role).toLowerCase();
+        if ("counter_staff".equals(normalized)) {
+            return "receptionist";
+        }
+        return normalized;
+    }
+
+    private String trim(String value) {
+        return value == null ? "" : value.trim();
+    }
 }

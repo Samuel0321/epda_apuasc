@@ -4,7 +4,56 @@
     Author     : pinju
 --%>
 
+<%@page import="java.math.BigDecimal,java.text.NumberFormat,java.time.LocalDate,java.util.ArrayList,java.util.List,java.util.Locale,models.AppointmentService,models.AppointmentServiceFacade,models.Appointments,models.AppointmentsFacade,models.ServiceEntity,models.ServiceEntityFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%
+    UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
+    if (currentUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
+    String currentRole = currentUser.getRole() == null ? "" : currentUser.getRole().trim().toLowerCase();
+    if (!("receptionist".equals(currentRole) || "counter_staff".equals(currentRole))) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
+
+    AppointmentsFacade appointmentsFacade = EjbLookup.lookup(AppointmentsFacade.class, "AppointmentsFacade");
+    UsersEntityFacade usersFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+    AppointmentServiceFacade appointmentServiceFacade = EjbLookup.lookup(AppointmentServiceFacade.class, "AppointmentServiceFacade");
+    ServiceEntityFacade serviceEntityFacade = EjbLookup.lookup(ServiceEntityFacade.class, "ServiceEntityFacade");
+
+    NumberFormat currency = NumberFormat.getCurrencyInstance(new Locale("ms", "MY"));
+    List<Appointments> allAppointments = appointmentsFacade.findAllOrdered();
+    List<Appointments> payments = new ArrayList<Appointments>();
+    BigDecimal paidToday = BigDecimal.ZERO;
+    int pendingPayments = 0;
+    int failedTransactions = 0;
+    LocalDate today = LocalDate.now();
+
+    for (Appointments appointment : allAppointments) {
+        String status = appointment.getStatus() == null ? "" : appointment.getStatus().trim().toUpperCase();
+        if (!("PAID".equals(status) || "UNPAID".equals(status) || "COMPLETED".equals(status) || "FAILED".equals(status))) {
+            continue;
+        }
+        payments.add(appointment);
+
+        if ("PAID".equals(status) && today.equals(appointment.getAppointment_date())) {
+            paidToday = paidToday.add(appointment.getTotal_amount() == null ? BigDecimal.ZERO : appointment.getTotal_amount());
+        }
+        if ("UNPAID".equals(status) || "COMPLETED".equals(status)) {
+            pendingPayments++;
+        }
+        if ("FAILED".equals(status)) {
+            failedTransactions++;
+        }
+    }
+
+    java.util.Map<Integer, String> userNameById = new java.util.HashMap<Integer, String>();
+    for (UsersEntity user : usersFacade.findAll()) {
+        userNameById.put(user.getId(), user.getName());
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -210,22 +259,9 @@
 
     <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; PAYMENTS
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">R</div>
-                    <div class="user-info">
-                        <div class="name">Receptionist</div>
-                        <div class="email">receptionist@autofix.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="PAYMENTS" />
+        </jsp:include>
 
         <!-- HEADER -->
         <div class="header-row">
@@ -239,31 +275,28 @@
         <div class="summary">
             <div class="summary-card">
                 <div class="summary-label">Total Payments Today</div>
-                <div class="summary-value">RM 3,450</div>
+                <div class="summary-value"><%= currency.format(paidToday) %></div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Pending Payments</div>
-                <div class="summary-value">5</div>
+                <div class="summary-value"><%= pendingPayments %></div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Failed Transactions</div>
-                <div class="summary-value">1</div>
+                <div class="summary-value"><%= failedTransactions %></div>
             </div>
         </div>
 
         <!-- FILTERS -->
         <div class="filters">
-            <button class="filter-btn active">All</button>
-            <button class="filter-btn">Paid</button>
-            <button class="filter-btn">Pending</button>
-            <button class="filter-btn">Failed</button>
+            <button class="filter-btn active" data-filter="All">All</button>
+            <button class="filter-btn" data-filter="Paid">Paid</button>
+            <button class="filter-btn" data-filter="Pending">Pending</button>
+            <button class="filter-btn" data-filter="Failed">Failed</button>
         </div>
 
         <!-- TABLE -->
         <div class="table-container">
-            <div class="toolbar">
-                <button class="btn-primary-action">+ Collect New Payment</button>
-            </div>
 
             <div class="table-header">
                 <input type="text" class="search-box" placeholder="Search by customer or transaction ID...">
@@ -282,84 +315,91 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <% if (payments.isEmpty()) { %>
                     <tr>
-                        <td>#INV001</td>
-                        <td>Ahmad Faisal</td>
-                        <td>Oil Change</td>
-                        <td class="amount">RM 150</td>
-                        <td>Mar 20, 2026</td>
-                        <td><span class="badge badge-paid">Paid</span></td>
+                        <td colspan="7">No payment records found.</td>
+                    </tr>
+                    <% } else {
+                        for (Appointments appointment : payments) {
+                            Integer appointmentId = appointment.getId();
+                            String customerName = userNameById.get(appointment.getCustomer_id());
+                            if (customerName == null || customerName.trim().isEmpty()) {
+                                customerName = "Customer #" + appointment.getCustomer_id();
+                            }
+
+                            List<AppointmentService> links = appointmentServiceFacade.findByAppointmentId(appointmentId);
+                            String serviceName = "General Service";
+                            if (links != null && !links.isEmpty()) {
+                                Integer serviceId = links.get(0).getService_id();
+                                ServiceEntity service = serviceId == null ? null : serviceEntityFacade.find(serviceId);
+                                if (service != null && service.getService_name() != null && !service.getService_name().trim().isEmpty()) {
+                                    serviceName = service.getService_name();
+                                }
+                            }
+
+                            String status = appointment.getStatus() == null ? "PENDING" : appointment.getStatus().trim().toUpperCase();
+                            String statusText = "PENDING";
+                            String statusClass = "badge-pending";
+                            if ("PAID".equals(status)) {
+                                statusText = "Paid";
+                                statusClass = "badge-paid";
+                            } else if ("FAILED".equals(status)) {
+                                statusText = "Failed";
+                                statusClass = "badge-failed";
+                            }
+                    %>
+                    <tr class="payment-row" data-status="<%= statusText %>">
+                        <td>#INV<%= String.format("%03d", appointmentId) %></td>
+                        <td><%= customerName %></td>
+                        <td><%= serviceName %></td>
+                        <td class="amount"><%= currency.format(appointment.getTotal_amount() == null ? BigDecimal.ZERO : appointment.getTotal_amount()) %></td>
+                        <td><%= "PAID".equals(status) ? (appointment.getAppointment_date() == null ? "-" : appointment.getAppointment_date().toString()) : "-" %></td>
+                        <td><span class="badge <%= statusClass %>"><%= statusText %></span></td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-receipt">Receipt</button>
+                                <button class="btn-small btn-info" onclick="window.location.href='Appointments.jsp'">View</button>
+                                <% if ("PAID".equals(status)) { %><button class="btn-small btn-receipt" onclick="alert('Receipt generated.')">Receipt</button><% } %>
+                                <% if (!("PAID".equals(status) || "FAILED".equals(status))) { %>
+                                <form method="post" action="<%= request.getContextPath() %>/ReceptionistPaymentServlet" style="display:inline;">
+                                    <input type="hidden" name="appointmentId" value="<%= appointmentId %>">
+                                    <button type="submit" class="btn-small btn-pay">Mark as Paid</button>
+                                </form>
+                                <% } %>
                             </div>
                         </td>
                     </tr>
-                    <tr>
-                        <td>#INV002</td>
-                        <td>Nurul Huda</td>
-                        <td>Brake Inspection</td>
-                        <td class="amount">RM 200</td>
-                        <td>Mar 24, 2026</td>
-                        <td><span class="badge badge-pending">Pending</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-receipt">Receipt</button>
-                                <button class="btn-small btn-pay">Process</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>#INV003</td>
-                        <td>Siti Aminah</td>
-                        <td>Tire Rotation</td>
-                        <td class="amount">RM 100</td>
-                        <td>Mar 21, 2026</td>
-                        <td><span class="badge badge-paid">Paid</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-receipt">Receipt</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>#INV004</td>
-                        <td>Muhammad Ali</td>
-                        <td>AC Service</td>
-                        <td class="amount">RM 250</td>
-                        <td>Mar 23, 2026</td>
-                        <td><span class="badge badge-failed">Failed</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-receipt">Receipt</button>
-                                <button class="btn-small btn-pay">Retry</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>#INV005</td>
-                        <td>Zahra Rahman</td>
-                        <td>General Maintenance</td>
-                        <td class="amount">RM 180</td>
-                        <td>Mar 24, 2026</td>
-                        <td><span class="badge badge-pending">Pending</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-info">View</button>
-                                <button class="btn-small btn-receipt">Receipt</button>
-                                <button class="btn-small btn-pay">Process</button>
-                            </div>
-                        </td>
-                    </tr>
+                    <%  }
+                       } %>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const filters = document.querySelectorAll(".filter-btn");
+        const rows = document.querySelectorAll(".payment-row");
+
+        filters.forEach(btn => {
+            btn.addEventListener("click", function() {
+                filters.forEach(f => f.classList.remove("active"));
+                this.classList.add("active");
+                const filter = this.getAttribute("data-filter");
+
+                rows.forEach(row => {
+                    if (filter === "All" || row.getAttribute("data-status").toUpperCase() === filter.toUpperCase()) {
+                        row.style.display = "";
+                    } else {
+                        row.style.display = "none";
+                    }
+                });
+            });
+        });
+    });
+</script>
 </body>
 </html>
+
+
+

@@ -1,599 +1,374 @@
-<%--
-    Document   : MyAppointments
-    Created on : Mar 24, 2026
-    Author     : pinju
-    Updated   : New Workflow support
---%>
+<%@page import="java.util.ArrayList,java.util.Arrays,java.util.HashMap,java.util.List,java.util.Map,models.AppointmentService,models.AppointmentServiceFacade,models.Appointments,models.AppointmentsFacade,models.ServiceEntity,models.ServiceEntityFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
+<%
+    UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
+    if (currentUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
 
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
+    UsersEntityFacade userFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+    AppointmentsFacade appointmentsFacade = EjbLookup.lookup(AppointmentsFacade.class, "AppointmentsFacade");
+    AppointmentServiceFacade appointmentServiceFacade = EjbLookup.lookup(AppointmentServiceFacade.class, "AppointmentServiceFacade");
+    ServiceEntityFacade serviceFacade = EjbLookup.lookup(ServiceEntityFacade.class, "ServiceEntityFacade");
+
+    currentUser = userFacade.find(currentUser.getId());
+    session.setAttribute("user", currentUser);
+
+    List<Appointments> appointments = appointmentsFacade.findByCustomerId(currentUser.getId());
+    List<String> attentionStatuses = Arrays.asList("WAITING APPROVAL", "UNPAID", "REJECTED", "DELAYED");
+    List<String> pendingPaymentStatuses = Arrays.asList("UNPAID");
+
+    Map<Integer, String> serviceNames = new HashMap<>();
+    Map<Integer, String> technicianNames = new HashMap<>();
+    long attentionCount = 0;
+    long pendingPaymentCount = 0;
+
+    for (Appointments appointment : appointments) {
+        List<AppointmentService> links = appointmentServiceFacade.findByAppointmentId(appointment.getAppointment_id());
+        List<String> names = new ArrayList<>();
+        for (AppointmentService link : links) {
+            ServiceEntity service = serviceFacade.find(link.getService_id());
+            if (service != null) {
+                names.add(service.getService_name());
+            }
+        }
+        serviceNames.put(appointment.getAppointment_id(), names.isEmpty() ? "Service Request" : String.join(", ", names));
+
+        UsersEntity technician = appointment.getTechnician_id() == null ? null : userFacade.find(appointment.getTechnician_id());
+        technicianNames.put(appointment.getAppointment_id(), technician == null ? "Pending assignment" : technician.getName());
+
+        String status = appointment.getStatus() == null ? "" : appointment.getStatus().trim().toUpperCase();
+        if (attentionStatuses.contains(status)) {
+            attentionCount++;
+        }
+        if (pendingPaymentStatuses.contains(status)) {
+            pendingPaymentCount++;
+        }
+    }
+
+    String successMessage = null;
+    if (request.getParameter("booked") != null) {
+        successMessage = "Appointment saved successfully.";
+    } else if (request.getParameter("updated") != null) {
+        successMessage = "Your quotation decision was saved successfully.";
+    } else if (request.getParameter("feedbackSaved") != null) {
+        successMessage = "Thank you. Your feedback was saved successfully.";
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
     <title>My Appointments</title>
     <link rel="stylesheet" href="../../Styles/main.css">
-    <style>
-        .appointments-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .appointment-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            overflow: hidden;
-            transition: all 0.3s ease;
-            border-left: 4px solid #2563eb;
-        }
-
-        .appointment-card:hover {
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-        }
-
-        .appointment-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-        }
-
-        .appointment-date {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-
-        .appointment-time {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        .appointment-body {
-            padding: 20px;
-        }
-
-        .appointment-service {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 8px;
-        }
-
-        .appointment-detail {
-            font-size: 13px;
-            color: #64748b;
-            margin-bottom: 6px;
-        }
-
-        .workflow-status {
-            background: #f1f5f9;
-            padding: 12px;
-            border-radius: 8px;
-            margin: 10px 0;
-            font-size: 13px;
-        }
-
-        .workflow-label {
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 5px;
-        }
-
-        .appointment-status {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-top: 5px;
-        }
-
-        .status-pending {
-            background: #fef08a;
-            color: #854d0e;
-        }
-
-        .status-assigned {
-            background: #bfdbfe;
-            color: #1e40af;
-        }
-
-        .status-waiting-approval {
-            background: #fed7aa;
-            color: #92400e;
-        }
-
-        .status-approved {
-            background: #bbf7d0;
-            color: #166534;
-        }
-
-        .status-rejected {
-            background: #fecaca;
-            color: #7f1d1d;
-        }
-
-        .status-completed {
-            background: #c7d2fe;
-            color: #3730a3;
-        }
-
-        .status-paid {
-            background: #86efac;
-            color: #166534;
-        }
-
-        .quotation-section {
-            background: #fef3c7;
-            padding: 10px;
-            border-radius: 6px;
-            margin: 10px 0;
-            font-size: 13px;
-        }
-
-        .quotation-price {
-            font-weight: 700;
-            color: #92400e;
-            font-size: 16px;
-        }
-
-        .appointment-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .appointment-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .btn-primary {
-            background: #2563eb;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-        }
-
-        .btn-approve {
-            background: #16a34a;
-            color: white;
-        }
-
-        .btn-approve:hover {
-            background: #15803d;
-        }
-
-        .btn-reject {
-            background: #dc2626;
-            color: white;
-        }
-
-        .btn-reject:hover {
-            background: #b91c1c;
-        }
-
-        .btn-secondary {
-            background: #e5e7eb;
-            color: #1e293b;
-        }
-
-        .btn-secondary:hover {
-            background: #d1d5db;
-        }
-
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            padding: 8px 14px;
-            border: 1px solid #e2e8f0;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        .filter-btn:hover,
-        .filter-btn.active {
-            background: #2563eb;
-            color: white;
-            border-color: #2563eb;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        /* Comment Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-        }
-
-        .modal.show {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            font-size: 20px;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 20px;
-        }
-
-        .comment-section {
-            background: #f8fafc;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border-left: 4px solid #2563eb;
-        }
-
-        .comment-label {
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-
-        .comment-text {
-            color: #475569;
-            line-height: 1.6;
-            font-size: 14px;
-            white-space: pre-wrap;
-        }
-
-        .comment-meta {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .btn-close-modal {
-            padding: 10px 16px;
-            border: none;
-            background: #e2e8f0;
-            color: #1e293b;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .btn-close-modal:hover {
-            background: #cbd5e1;
-        }
+        <style>
+        .summary-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-bottom:20px}
+        .summary-card,.task-card,.modal-panel{background:white;border:1px solid #dbe2ea;border-radius:18px;box-shadow:0 10px 28px rgba(15,23,42,.06)}
+        .summary-card{padding:18px}
+        .summary-label{color:#64748b;font-size:13px;margin-bottom:8px}
+        .summary-value{font-size:30px;font-weight:700;color:#0f172a}
+        .filters{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}       
+        .filter-btn{padding:10px 16px;border:1px solid #dbe2ea;background:white;border-radius:10px;cursor:pointer;font-size:14px}
+        .filter-btn.active{background:#334155;color:white;border-color:#334155} 
+        .tasks-container{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
+        .task-card.hide{display:none}
+        .task-head{padding:18px 20px;border-bottom:1px solid #e2e8f0;background:#f8fafc;display:flex;justify-content:space-between;align-items:center;}
+        .task-id{font-size:14px;color:#64748b;font-weight:600;}
+        .task-title{font-size:20px;font-weight:700;color:#0f172a}
+        .task-body{padding:20px;display:flex;flex-direction:column;gap:14px}    
+        .task-meta{color:#475569;line-height:1.65;font-size:14px}
+        .status-box,.quote-box,.detail-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px;font-size:14px;}
+        .status-chip{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;margin-top:10px;background:#e2e8f0;color:#334155}
+        .task-actions{display:flex;flex-direction:column;gap:10px;margin-top:auto}
+        .task-btn,.modal-actions button{padding:10px 14px;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600}
+        .task-btn{width:100%}
+        .btn-primary{background:#2563eb;color:white}
+        .btn-secondary{background:#e2e8f0;color:#0f172a}
+        .btn-note{background:#cbd5e1;color:#0f172a}
+        .btn-disabled{background:#e5e7eb;color:#64748b;cursor:not-allowed}      
+        .alert{margin-bottom:18px;padding:12px 14px;border-radius:12px;font-size:14px}
+        .alert-success{background:#dcfce7;color:#166534}
+        .alert-error{background:#fee2e2;color:#991b1b}
+        .empty-state{background:white;border:1px dashed #cbd5e1;border-radius:18px;padding:32px;text-align:center;color:#64748b}
+        .modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:1000;padding:30px 16px;overflow-y:auto}
+        .modal.show{display:block}
+        .modal-panel{max-width:820px;margin:0 auto;padding:24px;background:white;border-radius:20px;}
+        .modal-title{font-size:26px;font-weight:700;margin-bottom:8px;color:#0f172a}
+        .modal-subtitle{color:#64748b;margin-bottom:18px}
+        .detail-grid,.service-checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+        .detail-card strong{display:block;margin-bottom:6px}
+        .full-span{grid-column:1/-1}
+        .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+        @media (max-width:900px){.summary-cards,.detail-grid,.service-checklist{grid-template-columns:1fr}}
     </style>
 </head>
-
 <body>
-
 <div class="layout">
-    <!-- Sidebar -->
     <jsp:include page="../../Component/Sidebar.jsp" />
-
-    <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; MY APPOINTMENTS
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="MY APPOINTMENTS" />
+        </jsp:include>
+
+        <div class="header-row"><div class="header-text"><h1>My Appointments</h1><p>View and manage all your appointments.</p></div><div class="actions"><button class="btn btn-primary" onclick="window.location.href='../../Pages/Customer/BookAppointment.jsp'">+ Book Appointment</button></div></div>        <% if (successMessage != null) { %>
+            <div class="alert alert-success"><%= successMessage %></div>
+        <% } %>
+        <% if ("FeedbackRequired".equals(request.getParameter("error"))) { %>
+            <div class="alert alert-error">Please enter your feedback before saving.</div>
+        <% } %>
+
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-label">Total Appointments</div>
+                <div class="summary-value"><%= appointments.size() %></div>
             </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">C</div>
-                    <div class="user-info">
-                        <div class="name">Siti Aminah</div>
-                        <div class="email">siti.aminah@email.com</div>
-                    </div>
-                </div>
+            <div class="summary-card">
+                <div class="summary-label">Needs Attention</div>
+                <div class="summary-value"><%= attentionCount %></div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Pending Payments</div>
+                <div class="summary-value"><%= pendingPaymentCount %></div>
             </div>
         </div>
 
-        <!-- HEADER -->
-        <div class="header-row">
-            <div class="header-text">
-                <h1>My Appointments</h1>
-                <p>Track your service appointments through the workflow</p>
-            </div>
-            <div class="header-actions">
-                <button class="btn btn-primary" onclick="window.location.href='../../Receptionist/NewAppointment.jsp'">+ Book New Appointment</button>
-            </div>
-        </div>
-
-        <!-- FILTERS -->
         <div class="filters">
-            <button class="filter-btn active">All</button>
-            <button class="filter-btn">Pending</button>
-            <button class="filter-btn">Assigned</button>
-            <button class="filter-btn">Waiting Approval</button>
-            <button class="filter-btn">Approved</button>
-            <button class="filter-btn">Completed</button>
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="pending">Pending</button>
+            <button class="filter-btn" data-filter="assigned">Assigned</button>
+            <button class="filter-btn" data-filter="waiting_approval">Action Required</button>
+            <button class="filter-btn" data-filter="accepted">Accepted / In Progress</button>
+            <button class="filter-btn" data-filter="delayed">Delayed</button>
+            <button class="filter-btn" data-filter="completed_group">Completed / Past</button>
         </div>
 
-        <!-- APPOINTMENTS CARDS -->
-        <div class="appointments-container">
-            <!-- Appointment 1: PENDING -->
-            <div class="appointment-card">
-                <div class="appointment-header">
-                    <div class="appointment-date">25 Mar</div>
-                    <div class="appointment-time">10:00 AM</div>
-                </div>
-                <div class="appointment-body">
-                    <div class="appointment-service">Normal Service</div>
-                    <div class="appointment-detail">🚗 Toyota Camry 2020 (Engine noise)</div>
-                    <div class="appointment-detail">📍 AutoFix Pro Service Center</div>
+        <% if (appointments.isEmpty()) { %>
+            <div class="empty-state">You have no appointments booked yet.</div>
+        <% } else { %>
+            <div class="tasks-container">
+                <% for (Appointments apt : appointments) {
+                    String status = apt.getStatus() == null ? "PENDING" : apt.getStatus().trim().toUpperCase();
+                    String filterClass = status.replace(' ', '_').toLowerCase();
+                    if ("WAITING APPROVAL".equals(status)) { filterClass = "waiting_approval"; }
+                    if ("DELAYED".equals(status)) { filterClass = "delayed"; }
+                    if ("COMPLETED".equals(status) || "PAID".equals(status) || "UNPAID".equals(status) || "REJECTED".equals(status)) { filterClass = "completed_group"; }
                     
-                    <div class="workflow-status">
-                        <div class="workflow-label">Status: PENDING</div>
-                        <span class="appointment-status status-pending">⏳ Waiting for Technician Assignment</span>
+                    String aptServices = serviceNames.get(apt.getAppointment_id());
+                    String tName = technicianNames.get(apt.getAppointment_id());
+                %>
+                <div class="task-card" data-filter="<%= filterClass %>">
+                    <div class="task-head">
+                        <div class="task-title"><%= apt.getAppointment_date() %></div>
+                        <div class="task-id">#APT<%= String.format("%03d", apt.getAppointment_id()) %></div>
                     </div>
-                    
-                    <div class="appointment-actions">
-                        <button class="appointment-btn btn-secondary">View Details</button>
+                    <div class="task-body">
+                        <div class="task-meta">
+                            <strong>Time:</strong> <%= apt.getAppointment_time() %><br>
+                            <strong>Services:</strong> <%= aptServices %><br>
+                            <strong>Technician:</strong> <%= tName %>
+                        </div>
+                        
+                        <div class="status-box">
+                            <strong>Status</strong>
+                            <div class="status-chip"><%= displayCustomerStatus(status) %></div>
+                        </div>
+
+                        <div class="quote-box">
+                            <strong>Amount</strong>
+                            <div style="font-weight:700;margin-top:6px;"><%= displayAmount(apt.getTotal_amount()) %></div>
+                            <% if ("DELAYED".equals(status)) { %>
+                                <div style="margin-top:10px;color:#b45309;"><%= sanitizeComment(apt.getCounter_staff_comment()) %></div>
+                            <% } %>
+                            <% if ("COMPLETED".equals(status) || "UNPAID".equals(status)) { %>
+                                <div style="margin-top:10px;color:#92400e;">Please find receptionist at the counter for payment.</div>
+                            <% } else if ("PAID".equals(status) && (apt.getCustomer_feedback() == null || apt.getCustomer_feedback().trim().isEmpty())) { %>
+                                <div style="margin-top:10px;color:#166534;">Payment received. You can now share your service feedback.</div>
+                            <% } %>
+                        </div>
+
+                        <div class="task-actions">
+                            <% if ("WAITING APPROVAL".equals(status)) { %>
+                                <div style="display:flex;gap:10px;width:100%">
+                                    <form action="<%= request.getContextPath() %>/CustomerAppointmentActionServlet" method="POST" style="flex:1;margin:0;">
+                                        <input type="hidden" name="action" value="ACCEPT">
+                                        <input type="hidden" name="appointmentId" value="<%= apt.getAppointment_id() %>">
+                                        <button type="submit" class="task-btn btn-primary" style="width:100%">Accept</button>
+                                    </form>
+                                    <form action="<%= request.getContextPath() %>/CustomerAppointmentActionServlet" method="POST" style="flex:1;margin:0;">
+                                        <input type="hidden" name="action" value="REJECT">
+                                        <input type="hidden" name="appointmentId" value="<%= apt.getAppointment_id() %>">
+                                        <button type="submit" class="task-btn" style="width:100%; background:#ef4444; color:white;">Reject</button>
+                                    </form>
+                                </div>
+                            <% } %>
+                            <% if ("UNPAID".equals(status)) { %>
+                                <button class="task-btn btn-note" onclick="alert('Please find receptionist at the counter for payment.')">Find Receptionist For Payment</button>
+                            <% } %>
+                            <% if ("COMPLETED".equals(status)) { %>
+                                <button class="task-btn btn-note" onclick="alert('Repair is completed. Please find receptionist at the counter for payment.')">Find Receptionist For Payment</button>
+                            <% } %>
+                            <% if ("PAID".equals(status) && (apt.getCustomer_feedback() == null || apt.getCustomer_feedback().trim().isEmpty())) { %>
+                                <button class="task-btn btn-primary" type="button" onclick="openFeedbackModal('<%= apt.getAppointment_id() %>', '<%= escapeForJs(aptServices) %>')">Provide Feedback</button>
+                            <% } %>
+                            <button class="task-btn btn-secondary" type="button" onclick="openAppointmentModal('#APT<%= String.format("%03d", apt.getAppointment_id()) %>', '<%= apt.getAppointment_date() %>', '<%= apt.getAppointment_time() %>', '<%= escapeForJs(aptServices) %>', '<%= escapeForJs(tName) %>', '<%= escapeForJs(displayCustomerStatus(status)) %>', '<%= escapeForJs(displayAmount(apt.getTotal_amount())) %>', '<%= escapeForJs(apt.getCustomer_notes()) %>', '<%= escapeForJs(sanitizeComment(apt.getCounter_staff_comment())) %>', '<%= escapeForJs(apt.getTechnician_notes()) %>', '<%= escapeForJs(apt.getCustomer_feedback()) %>')">View Details</button>
+                        </div>
                     </div>
                 </div>
+                <% } %>
             </div>
+        <% } %>
 
-            <!-- Appointment 2: ASSIGNED -->
-            <div class="appointment-card">
-                <div class="appointment-header">
-                    <div class="appointment-date">25 Mar</div>
-                    <div class="appointment-time">2:00 PM</div>
-                </div>
-                <div class="appointment-body">
-                    <div class="appointment-service">Major Service</div>
-                    <div class="appointment-detail">🚗 Honda CR-V 2019 (Brake inspection)</div>
-                    <div class="appointment-detail">👨‍🔧 Assigned to: John Smith</div>
-                    
-                    <div class="workflow-status">
-                        <div class="workflow-label">Status: ASSIGNED</div>
-                        <span class="appointment-status status-assigned">📋 Technician Assigned</span>
-                    </div>
-                    
-                    <div class="appointment-actions">
-                        <button class="appointment-btn btn-secondary">View Details</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Appointment 3: WAITING APPROVAL -->
-            <div class="appointment-card">
-                <div class="appointment-header">
-                    <div class="appointment-date">26 Mar</div>
-                    <div class="appointment-time">11:00 AM</div>
-                </div>
-                <div class="appointment-body">
-                    <div class="appointment-service">Normal Service</div>
-                    <div class="appointment-detail">🚗 Nissan X-Trail 2021 (Oil change)</div>
-                    <div class="appointment-detail">👨‍🔧 Technician: Ahmad Hassan</div>
-                    
-                    <div class="workflow-status">
-                        <div class="workflow-label">Status: WAITING APPROVAL</div>
-                        <span class="appointment-status status-waiting-approval">🔍 Quotation Ready</span>
-                    </div>
-
-                    <div class="quotation-section">
-                        <div>Proposed Services:</div>
-                        <div style="margin-top: 5px;">• Oil Change - RM 150</div>
-                        <div>• Oil Filter - RM 100</div>
-                        <div class="quotation-price" style="margin-top: 8px;">Total: RM 250</div>
-                    </div>
-                    
-                    <div class="appointment-actions">
-                        <button class="appointment-btn btn-approve" onclick="approveQuotation(3)">✓ Approve</button>
-                        <button class="appointment-btn btn-reject" onclick="rejectQuotation(3)">✗ Reject</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Appointment 4: APPROVED -->
-            <div class="appointment-card">
-                <div class="appointment-header">
-                    <div class="appointment-date">27 Mar</div>
-                    <div class="appointment-time">3:00 PM</div>
-                </div>
-                <div class="appointment-body">
-                    <div class="appointment-service">Major Service</div>
-                    <div class="appointment-detail">🚗 BMW 3 Series 2021 (Full maintenance)</div>
-                    <div class="appointment-detail">👨‍🔧 Technician: Nurul Amin</div>
-                    
-                    <div class="workflow-status">
-                        <div class="workflow-label">Status: APPROVED</div>
-                        <span class="appointment-status status-approved">✓ Service Starting Soon</span>
-                    </div>
-
-                    <div class="quotation-section">
-                        <div style="font-weight: 600;">Approved Quotation: RM 450</div>
-                    </div>
-                    
-                    <div class="appointment-actions">
-                        <button class="appointment-btn btn-secondary">View Quotation</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Appointment 5: COMPLETED -->
-            <div class="appointment-card">
-                <div class="appointment-header">
-                    <div class="appointment-date">23 Mar</div>
-                    <div class="appointment-time">1:00 PM</div>
-                </div>
-                <div class="appointment-body">
-                    <div class="appointment-service">Normal Service</div>
-                    <div class="appointment-detail">🚗 Toyota Corolla 2018 (Battery replacement)</div>
-                    <div class="appointment-detail">👨‍🔧 Technician: Hassan Ibrahim</div>
-                    
-                    <div class="workflow-status">
-                        <div class="workflow-label">Status: COMPLETED</div>
-                        <span class="appointment-status status-completed">✅ Service Completed</span>
-                    </div>
-
-                    <div class="quotation-section">
-                        <div style="font-weight: 600;">Final Amount: RM 180</div>
-                        <div style="margin-top: 5px; color: #dc2626;">⚠️ Payment Pending</div>
-                    </div>
-                    
-                    <div class="appointment-actions">
-                        <button class="appointment-btn btn-secondary" onclick="viewCustomerTechnicianNotes(6)">Technician Notes</button>
-                        <button class="appointment-btn btn-primary">View Receipt</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Appointment 6: PAID -->
-            <div class="appointment-card">
-                <div class="appointment-header">
-                    <div class="appointment-date">22 Mar</div>
-                    <div class="appointment-time">11:00 AM</div>
-                </div>
-                <div class="appointment-body">
-                    <div class="appointment-service">Normal Service</div>
-                    <div class="appointment-detail">🚗 Mazda CX-5 2020 (Spark plugs & diagnostics)</div>
-                    <div class="appointment-detail">👨‍🔧 Technician: John Smith</div>
-                    
-                    <div class="workflow-status">
-                        <div class="workflow-label">Status: PAID</div>
-                        <span class="appointment-status status-paid">💰 Payment Received</span>
-                    </div>
-
-                    <div class="quotation-section">
-                        <div style="font-weight: 600;">Amount Paid: RM 150</div>
-                        <div style="margin-top: 5px; color: #16a34a;">✓ Completed & Paid</div>
-                    </div>
-
-                    <div class="appointment-actions">
-                        <button class="appointment-btn btn-secondary" onclick="viewCustomerTechnicianNotes(7)">Technician Notes</button>
-                    </div>
-                    
-                    <div class="appointment-actions">
-                        <button class="appointment-btn btn-primary">Download Invoice</button>
-                    </div>
-                </div>
-            </div>
+<div id="appointmentModal" class="modal">
+    <div class="modal-panel">
+        <div class="modal-title">Appointment Details</div>
+        <div class="modal-subtitle" id="modalAppointmentId"></div>
+        <div class="detail-grid">
+            <div class="detail-card"><strong>Date &amp; Time</strong><div id="modalDateTime"></div></div>
+            <div class="detail-card"><strong>Status</strong><div id="modalStatus"></div></div>
+            <div class="detail-card full-span"><strong>Services</strong><div id="modalService"></div></div>
+            <div class="detail-card"><strong>Technician</strong><div id="modalTechnician"></div></div>
+            <div class="detail-card"><strong>Total Amount</strong><div id="modalTotal"></div></div>
+            <div class="detail-card full-span"><strong>Customer Notes</strong><div id="modalCustomerNote"></div></div>
+            <div class="detail-card full-span"><strong>Tech Notes</strong><div id="modalTechnicianNote"></div></div>
+            <div class="detail-card full-span"><strong>Staff Comments</strong><div id="modalStaffComment"></div></div>
+            <div class="detail-card full-span"><strong>Feedback</strong><div id="modalFeedback"></div></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeAppointmentModal()">Close</button>
         </div>
     </div>
 </div>
 
-<!-- TECHNICIAN NOTES MODAL -->
-<div id="notesModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">📋 Technician's Service Notes</div>
-        <div id="notesBody">
-            <!-- Notes will be inserted here -->
-        </div>
-        <div class="modal-actions">
-            <button class="btn-close-modal" onclick="closeNotesModal()">Close</button>
-        </div>
+<div id="feedbackModal" class="modal">
+    <div class="modal-panel">
+        <div class="modal-title">Share Feedback</div>
+        <div class="modal-subtitle" id="feedbackModalSubtitle"></div>
+        <form method="post" action="<%= request.getContextPath() %>/CustomerAppointmentActionServlet">
+            <input type="hidden" name="action" value="SAVE_FEEDBACK">
+            <input type="hidden" name="appointmentId" id="feedbackAppointmentId">
+            <div class="detail-card full-span">
+                <strong>Your Feedback</strong>
+                <textarea id="feedbackText" name="feedback" rows="5" style="width:100%;margin-top:10px;padding:12px;border:1px solid #dbe2ea;border-radius:12px;font-family:'Segoe UI',sans-serif;font-size:14px;" required placeholder="Tell us about the repair quality, technician service, and your overall experience..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeFeedbackModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Save Feedback</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
-    function approveQuotation(appointmentId) {
-        if (confirm('Approve this quotation? Service will proceed with the proposed services.')) {
-            alert('✓ Quotation approved! Your service is now confirmed. Technician will start on scheduled date.');
-            location.reload();
-        }
+    const filterButtons = document.querySelectorAll(".filter-btn");
+    const appointmentCards = document.querySelectorAll(".task-card");
+
+    filterButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            filterButtons.forEach(function (item) {
+                item.classList.remove("active");
+            });
+            button.classList.add("active");
+
+            const filter = button.dataset.filter;
+            appointmentCards.forEach(function (card) {
+                const cardFilter = card.dataset.filter;
+                card.classList.toggle("hide", !(filter === "all" || cardFilter === filter));
+            });
+        });
+    });
+
+    function openAppointmentModal(id, date, time, service, technician, status, total, customerNote, staffComment, technicianNote, feedback) {
+        document.getElementById("modalAppointmentId").textContent = id || "-";
+        document.getElementById("modalDateTime").textContent = date + " | " + time;
+        document.getElementById("modalService").textContent = service || "-";
+        document.getElementById("modalTechnician").textContent = technician || "-";
+        document.getElementById("modalStatus").textContent = status || "-";
+        document.getElementById("modalTotal").textContent = total || "To be assessed by technician";
+        document.getElementById("modalCustomerNote").textContent = customerNote || "-";
+        document.getElementById("modalStaffComment").textContent = staffComment || "-";
+        document.getElementById("modalTechnicianNote").textContent = technicianNote || "-";
+        document.getElementById("modalFeedback").textContent = feedback || "-";
+        document.getElementById("appointmentModal").classList.add("show");
     }
 
-    function rejectQuotation(appointmentId) {
-        const reason = prompt('Please provide reason for rejection:');
-        if (reason) {
-            alert('✗ Quotation rejected. Receptionist will contact technician for revision.');
-            location.reload();
-        }
+    function openFeedbackModal(appointmentId, services) {
+        document.getElementById("feedbackAppointmentId").value = appointmentId;
+        document.getElementById("feedbackModalSubtitle").textContent = services || "Completed service";
+        document.getElementById("feedbackText").value = "";
+        document.getElementById("feedbackModal").classList.add("show");
     }
 
-    function viewCustomerTechnicianNotes(appointmentId) {
-        // Get completion data from localStorage
-        const completions = JSON.parse(localStorage.getItem('completions') || '[]');
-        const completion = completions.find(c => c.taskId === appointmentId);
-
-        const notesBody = document.getElementById('notesBody');
-        
-        if (completion) {
-            notesBody.innerHTML = `
-                <div class="comment-section">
-                    <div class="comment-label">📝 Service Completion Notes</div>
-                    <div class="comment-text">${completion.comment}</div>
-                    <div class="comment-meta">
-                        <strong>Technician:</strong> ${completion.technician}<br>
-                        <strong>Completed:</strong> ${completion.completedAt}
-                    </div>
-                </div>
-            `;
-        } else {
-            notesBody.innerHTML = `
-                <div class="comment-section">
-                    <div class="comment-label">⚠️ No notes available</div>
-                    <div class="comment-text">Technician has not yet provided completion notes for this service.</div>
-                </div>
-            `;
-        }
-
-        document.getElementById('notesModal').classList.add('show');
+    function closeAppointmentModal() {
+        document.getElementById("appointmentModal").classList.remove("show");
     }
 
-    function closeNotesModal() {
-        document.getElementById('notesModal').classList.remove('show');
+    function closeFeedbackModal() {
+        document.getElementById("feedbackModal").classList.remove("show");
     }
 
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('notesModal');
+    window.addEventListener("click", function (event) {
+        const modal = document.getElementById("appointmentModal");
         if (event.target === modal) {
-            closeNotesModal();
+            closeAppointmentModal();
         }
-    }
+        const feedbackModal = document.getElementById("feedbackModal");
+        if (event.target === feedbackModal) {
+            closeFeedbackModal();
+        }
+    });
 </script>
-
 </body>
 </html>
+<%!
+    private String escapeForJs(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\"", "&quot;")
+                .replace("\r", " ")
+                .replace("\n", " ");
+    }
+
+    private String displayAmount(java.math.BigDecimal amount) {
+        if (amount == null || amount.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            return "To be assessed by technician";
+        }
+        return "RM " + amount;
+    }
+
+    private String displayCustomerStatus(String status) {
+        if (status == null) {
+            return "-";
+        }
+        String normalized = status.trim().toUpperCase();
+        switch (normalized) {
+            case "PENDING": return "Pending Review";
+            case "ASSIGNED": return "Inspection Assigned";
+            case "WAITING APPROVAL": return "Quotation Ready";
+            case "ACCEPTED": return "Repair In Progress";
+            case "DELAYED": return "Repair Delayed";
+            case "COMPLETED": return "Find Receptionist For Payment";
+            case "UNPAID": return "Find Receptionist For Payment";
+            case "PAID": return "Paid";
+            case "REJECTED": return "Quotation Rejected";
+            default: return normalized;
+        }
+    }
+
+    private String sanitizeComment(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("[DELAY_HOURS=")) {
+            int closingIndex = trimmed.indexOf(']');
+            if (closingIndex >= 0 && closingIndex + 1 < trimmed.length()) {
+                return trimmed.substring(closingIndex + 1).trim();
+            }
+            return "";
+        }
+        return trimmed;
+    }
+%>
+

@@ -4,7 +4,40 @@
     Author     : pinju
 --%>
 
+<%@page import="java.util.Arrays,java.util.List,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%
+    UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
+    if (currentUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");      
+        return;
+    }
+    String currentRole = currentUser.getRole() == null ? "" : currentUser.getRole().trim().toLowerCase();
+    if (!("receptionist".equals(currentRole) || "counter_staff".equals(currentRole))) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");      
+        return;
+    }
+
+    UsersEntityFacade usersFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+
+    if ("POST".equalsIgnoreCase(request.getMethod())) {
+        String action = request.getParameter("action");
+        String idStr = request.getParameter("id");
+        if (idStr != null && !idStr.isEmpty()) {
+            Integer cid = Integer.parseInt(idStr);
+            UsersEntity c = usersFacade.find(cid);
+            if (c != null && c.getRole() != null && "customer".equalsIgnoreCase(c.getRole().trim())) {
+                if ("delete".equals(action)) {
+                    usersFacade.remove(c);
+                    response.sendRedirect("ManageCustomers.jsp?success=deleted");
+                    return;
+                }
+            }
+        }
+    }
+
+    List<UsersEntity> customers = usersFacade.findByRoles(Arrays.asList("customer"));
+%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -101,6 +134,9 @@
             background: #fecaca;
             color: #7f1d1d;
         }
+        .message { margin-bottom: 16px; padding: 12px 14px; border-radius: 8px; font-size: 14px; }
+        .message.success { background: #dcfce7; color: #166534; }
+        .message.error { background: #fee2e2; color: #991b1b; }
     </style>
 </head>
 
@@ -110,21 +146,9 @@
     <jsp:include page="../../Component/Sidebar.jsp" />
 
     <div class="main">
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; MANAGE CUSTOMERS
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">R</div>
-                    <div class="user-info">
-                        <div class="name">Receptionist</div>
-                        <div class="email">receptionist@autofix.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="MANAGE CUSTOMERS" />
+        </jsp:include>
 
         <div class="header-row">
             <div class="header-text">
@@ -134,6 +158,12 @@
         </div>
 
         <div class="table-container">
+            <% if ("deleted".equals(request.getParameter("success"))) { %>
+                <div class="message success">Customer record deleted successfully.</div>
+            <% } %>
+            <% if ("CustomerNotFound".equals(request.getParameter("error"))) { %>
+                <div class="message error">The selected customer record could not be found.</div>
+            <% } %>
             <div class="table-header">
                 <input type="text" class="search-box" placeholder="Search by name, phone, or email...">
                 <button class="btn-new" onclick="window.location.href='RegisterCustomer.jsp'">+ Create Customer</button>
@@ -144,60 +174,74 @@
                     <tr>
                         <th>Customer ID</th>
                         <th>Name</th>
-                        <th>Phone</th>
                         <th>Email</th>
-                        <th>Vehicle</th>
+                        <th>Phone</th>
+                        <th>Gender</th>
+                        <th>Malaysian</th>
+                        <th>Identity</th>
+                        <th>Country</th>
+                        <th>Address</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <% if (customers == null || customers.isEmpty()) { %>       
                     <tr>
-                        <td>#C001</td>
-                        <td>Ahmad Faisal</td>
-                        <td>+60 12-234 5678</td>
-                        <td>ahmad@example.com</td>
-                        <td>Toyota Vios</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">View</button>
-                                <button class="btn-small btn-edit">Update</button>
-                                <button class="btn-small btn-delete">Delete</button>
+                        <td colspan="10">No customer records found.</td>
+                    </tr>
+                    <% } else {
+                        for (UsersEntity customer : customers) {
+                            String customerName = customer.getName() == null ? "-" : customer.getName();
+                            String phone = customer.getPhone_number() == null ? "-" : customer.getPhone_number();
+                            String email = customer.getEmail() == null ? "-" : customer.getEmail();
+                            String address = customer.getHome_address() == null ? "-" : customer.getHome_address();
+                            String origin = customer.getOrigin_country() == null ? "-" : customer.getOrigin_country();
+                            String gender = customer.getGender() == null ? "-" : customer.getGender();
+                            String malaysian = customer.getIs_malaysian() != null && customer.getIs_malaysian() == 1 ? "Yes" : "No";
+                            String identity = maskIdentity(customer.getIC_number_passportnumber());
+                    %>
+                    <tr>
+                        <td>#C<%= String.format("%03d", customer.getId()) %></td>
+                        <td><%= customerName %></td>
+                        <td><%= email %></td>
+                        <td><%= phone %></td>
+                        <td><%= gender %></td>
+                        <td><%= malaysian %></td>
+                        <td><%= identity %></td>
+                        <td><%= origin %></td>
+                        <td><%= address %></td>
+                          <td>
+                              <div class="action-buttons">
+                                  <a href="EditCustomer.jsp?id=<%= customer.getId() %>" class="btn-small btn-edit" style="text-decoration:none; display:inline-block; text-align:center;">Edit Profile</a>
+                                <form method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this customer?');">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<%= customer.getId() %>">
+                                    <button type="submit" class="btn-small btn-delete">Delete</button>
+                                </form>
                             </div>
                         </td>
                     </tr>
-                    <tr>
-                        <td>#C002</td>
-                        <td>Nurul Huda</td>
-                        <td>+60 13-765 4321</td>
-                        <td>nurul@example.com</td>
-                        <td>Honda City</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">View</button>
-                                <button class="btn-small btn-edit">Update</button>
-                                <button class="btn-small btn-delete">Delete</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>#C003</td>
-                        <td>Siti Aminah</td>
-                        <td>+60 17-111 2233</td>
-                        <td>siti@example.com</td>
-                        <td>Perodua Myvi</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn-small btn-view">View</button>
-                                <button class="btn-small btn-edit">Update</button>
-                                <button class="btn-small btn-delete">Delete</button>
-                            </div>
-                        </td>
-                    </tr>
+                    <%  }
+                       } %>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
-
 </body>
 </html>
+<%!
+    private String maskIdentity(String value) {
+        if (value == null) {
+            return "-";
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return "-";
+        }
+        if (trimmed.length() <= 4) {
+            return "****";
+        }
+        return trimmed.substring(0, 2) + "****" + trimmed.substring(trimmed.length() - 2);
+    }
+%>

@@ -1,111 +1,158 @@
-<%--
-    Document   : CustomerDashboard
-    Created on : Mar 24, 2026
-    Author     : pinju
---%>
+<%@page import="java.math.BigDecimal,java.util.ArrayList,java.util.Arrays,java.util.HashMap,java.util.List,java.util.Map,models.AppointmentService,models.AppointmentServiceFacade,models.Appointments,models.AppointmentsFacade,models.ServiceEntity,models.ServiceEntityFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
+<%
+    UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
+    if (currentUser == null) {
+        response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
+        return;
+    }
 
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
+    UsersEntityFacade userFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+    AppointmentsFacade appointmentsFacade = EjbLookup.lookup(AppointmentsFacade.class, "AppointmentsFacade");
+    AppointmentServiceFacade appointmentServiceFacade = EjbLookup.lookup(AppointmentServiceFacade.class, "AppointmentServiceFacade");
+    ServiceEntityFacade serviceFacade = EjbLookup.lookup(ServiceEntityFacade.class, "ServiceEntityFacade");
+
+    currentUser = userFacade.find(currentUser.getId());
+    session.setAttribute("user", currentUser);
+
+    List<Appointments> allAppointments = appointmentsFacade.findByCustomerId(currentUser.getId());
+    List<String> activeStatuses = Arrays.asList("PENDING", "ASSIGNED", "WAITING APPROVAL", "ACCEPTED", "DELAYED", "REJECTED");
+    List<String> completedStatuses = Arrays.asList("COMPLETED", "UNPAID", "PAID");
+    List<String> pendingPaymentStatuses = Arrays.asList("UNPAID");
+
+    long activeCount = appointmentsFacade.countByCustomerIdAndStatuses(currentUser.getId(), activeStatuses);
+    long completedCount = appointmentsFacade.countByCustomerIdAndStatuses(currentUser.getId(), completedStatuses);
+    long pendingPaymentCount = appointmentsFacade.countByCustomerIdAndStatuses(currentUser.getId(), pendingPaymentStatuses);
+
+    Map<Integer, String> serviceNamesByAppointment = new HashMap<>();
+    for (Appointments appointment : allAppointments) {
+        List<AppointmentService> links = appointmentServiceFacade.findByAppointmentId(appointment.getAppointment_id());
+        List<String> names = new ArrayList<>();
+        for (AppointmentService link : links) {
+            ServiceEntity service = serviceFacade.find(link.getService_id());
+            if (service != null) {
+                names.add(service.getService_name());
+            }
+        }
+        serviceNamesByAppointment.put(appointment.getAppointment_id(), names.isEmpty() ? "Service Request" : String.join(", ", names));
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
     <title>Customer Dashboard</title>
     <link rel="stylesheet" href="../Styles/main.css">
+    <style>
+        .dashboard-empty {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 0;
+        }
+
+        .empty-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 92px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+    </style>
 </head>
-
 <body>
-
 <div class="layout">
-
-    <!-- Sidebar -->
     <jsp:include page="../Component/Sidebar.jsp" />
 
-    <!-- Main Content -->
-<div class="main">
+    <div class="main">
+        <jsp:include page="../Component/Topbar.jsp">
+            <jsp:param name="section" value="CUSTOMER PORTAL" />
+        </jsp:include>
 
-    <!-- TOPBAR -->
-    <div class="topbar">
-
-        <div class="topbar-left">
-            ☰ &nbsp; CUSTOMER PORTAL
+        <div class="header-row">
+            <div class="header-text">
+                <h1>Customer Dashboard</h1>
+                <p>Track your saved bookings, completed services, and payment status from the database.</p>
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" onclick="window.location.href='../Pages/Customer/BookAppointment.jsp'">+ Book Appointment</button>
+            </div>
         </div>
 
-        <div class="topbar-right">
-            <a href="../Pages/Common/Notifications.jsp" class="bell" style="cursor: pointer; text-decoration: none; color: inherit;">🔔</a>
+        <div class="cards">
+            <div class="card">
+                <h2><%= activeCount %></h2>
+                <p>Active Appointments</p>
+            </div>
 
-            <div class="profile" style="cursor: pointer;" onclick="window.location.href='../Pages/Common/Profile.jsp'">
-                <div class="avatar">C</div>
-                <div class="user-info">
-                    <div class="name">Customer Name</div>
-                    <div class="email">customer@email.com</div>
+            <div class="card">
+                <h2><%= completedCount %></h2>
+                <p>Completed Services</p>
+            </div>
+
+            <div class="card">
+                <h2><%= pendingPaymentCount %></h2>
+                <p>Pending Payments</p>
+            </div>
+        </div>
+
+        <div class="queue">
+            <h3>My Latest Appointments</h3>
+            <p class="sub">Recent booking records saved under your account</p>
+
+            <% if (allAppointments.isEmpty()) { %>
+                <div class="dashboard-empty">
+                    <div>
+                        <strong>No appointments yet</strong><br>
+                        <small>Your new bookings will appear here.</small>
+                    </div>
+                    <span class="empty-badge">Empty</span>
                 </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- HEADER -->
-    <div class="header-row">
-
-        <div class="header-text">
-            <h1>Your Dashboard</h1>
-            <p>Track your appointments and services</p>
-        </div>
-
-        <div class="actions">
-            <button class="btn btn-light">💬 Contact Support</button>
-            <button class="btn btn-primary" onclick="window.location.href='../Pages/Customer/MyAppointments.jsp'">+ Book Appointment</button>
-        </div>
-
-    </div>
-
-    <!-- CARDS -->
-    <div class="cards">
-        <div class="card">
-            <h2>3</h2>
-            <p>Upcoming Appointments</p>
-        </div>
-
-        <div class="card">
-            <h2>12</h2>
-            <p>Completed Services</p>
-        </div>
-
-        <div class="card">
-            <h2>2</h2>
-            <p>Pending Invoices</p>
+            <% } else {
+                int shown = 0;
+                for (Appointments appointment : allAppointments) {
+                    if (shown >= 4) {
+                        break;
+                    }
+                    shown++;
+            %>
+                <div class="queue-item">
+                    <div>
+                        <strong><%= serviceNamesByAppointment.get(appointment.getAppointment_id()) %></strong><br>
+                        <small><%= appointment.getAppointment_date() %> | <%= appointment.getAppointment_time() %></small>
+                    </div>
+                    <span class="status waiting"><%= displayCustomerStatus(appointment.getStatus()) %></span>
+                </div>
+            <%  }
+               } %>
         </div>
     </div>
-
-    <!-- APPOINTMENTS -->
-    <div class="queue">
-        <h3>My Appointments</h3>
-        <p class="sub">Your upcoming and past appointments</p>
-
-        <div class="queue-item">
-            <div>
-                <strong>Regular Oil Change</strong><br>
-                <small>Mar 25, 2026 · 10:00 AM</small>
-            </div>
-            <span class="status waiting">Scheduled</span>
-        </div>
-
-        <div class="queue-item">
-            <div>
-                <strong>Tire Rotation & Balancing</strong><br>
-                <small>Mar 28, 2026 · 2:00 PM</small>
-            </div>
-            <span class="status waiting">Scheduled</span>
-        </div>
-
-        <div class="queue-item">
-            <div>
-                <strong>Engine Inspection</strong><br>
-                <small>Mar 30, 2026 · 9:30 AM</small>
-            </div>
-            <span class="status waiting">Pending Confirmation</span>
-        </div>
-    </div>
-
 </div>
 </body>
 </html>
+<%!
+    private String displayCustomerStatus(String status) {
+        if (status == null) {
+            return "-";
+        }
+        String normalized = status.trim().toUpperCase();
+        switch (normalized) {
+            case "PENDING": return "Pending Review";
+            case "ASSIGNED": return "Inspection Assigned";
+            case "WAITING APPROVAL": return "Quotation Ready";
+            case "ACCEPTED": return "Repair In Progress";
+            case "DELAYED": return "Repair Delayed";
+            case "REJECTED": return "Quotation Rejected";
+            case "COMPLETED": return "Ready For Payment";
+            case "UNPAID": return "Payment Pending";
+            case "PAID": return "Paid";
+            default: return normalized;
+        }
+    }
+%>

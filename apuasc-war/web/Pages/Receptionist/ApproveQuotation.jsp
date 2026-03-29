@@ -1,4 +1,4 @@
-<%--
+﻿<%--
     Document   : ApproveQuotation
     Created on : Mar 25, 2026
     Author     : pinju
@@ -282,22 +282,9 @@
 
     <!-- Main Content -->
     <div class="main">
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="topbar-left">
-                ☰ &nbsp; APPROVE QUOTATION
-            </div>
-            <div class="topbar-right">
-                <span class="bell">🔔</span>
-                <div class="profile">
-                    <div class="avatar">R</div>
-                    <div class="user-info">
-                        <div class="name">Receptionist</div>
-                        <div class="email">receptionist@autofix.com</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="../../Component/Topbar.jsp">
+            <jsp:param name="section" value="APPROVE QUOTATION" />
+        </jsp:include>
 
         <!-- HEADER -->
         <div class="header-row">
@@ -335,12 +322,12 @@
 
             <!-- Technician Details -->
             <div class="technician-details">
-                <strong>Technician:</strong> Ahmad Hassan | ⭐⭐⭐⭐ (35 jobs) | Specialty: Brake Service, Suspension
+                <strong>Technician:</strong> Ahmad Hassan | â­â­â­â­ (35 jobs) | Specialty: Brake Service, Suspension
             </div>
 
             <!-- Services Breakdown -->
             <div class="services-section">
-                <h3>📋 Proposed Services</h3>
+                <h3>ðŸ“‹ Proposed Services</h3>
                 <table class="services-table">
                     <thead>
                         <tr>
@@ -372,7 +359,7 @@
 
             <!-- Remarks -->
             <div class="remarks-section">
-                <h4>🔍 Technician Remarks</h4>
+                <h4>ðŸ” Technician Remarks</h4>
                 <div class="remarks-text">
                     "Vehicle maintenance is due. Oil appears to be at minimum level. Recommended to use synthetic oil for better engine protection. All filters will be replaced with premium quality parts. Service will take approximately 1 hour."
                 </div>
@@ -396,8 +383,8 @@
 
             <!-- Action Buttons -->
             <div class="action-buttons">
-                <button class="btn btn-approve" onclick="approveQuotation()">✓ Approve Quotation</button>
-                <button class="btn btn-reject" onclick="openRejectModal()">✗ Reject Quotation</button>
+                <button class="btn btn-approve" onclick="approveQuotation()">âœ“ Approve Quotation</button>
+                <button class="btn btn-reject" onclick="openRejectModal()">âœ— Reject Quotation</button>
                 <button class="btn btn-cancel" onclick="window.location.href='Appointments.jsp'">Cancel</button>
             </div>
         </div>
@@ -424,7 +411,7 @@
 <script>
     function approveQuotation() {
         if (confirm('Are you sure you want to approve this quotation? The customer will be notified.')) {
-            alert('✓ Quotation approved successfully!\nCustomer will be notified to review and approve.');
+            alert('âœ“ Quotation approved successfully!\nCustomer will be notified to review and approve.');
             window.location.href = 'Appointments.jsp';
         }
     }
@@ -443,7 +430,7 @@
             alert('Please provide a reason for rejection.');
             return;
         }
-        alert('✗ Quotation rejected!\nTechnician will be notified: "' + reason + '"');
+        alert('âœ— Quotation rejected!\nTechnician will be notified: "' + reason + '"');
         window.location.href = 'Appointments.jsp';
     }
 
@@ -457,3 +444,6 @@
 
 </body>
 </html>
+
+
+

@@ -19,30 +19,30 @@ public class SidebarService {
         System.out.println("SidebarService.getMenu() called with role: " + role + " (normalized: " + normalizedRole + ")");
 
         if (normalizedRole.equals("receptionist") || normalizedRole.equals("counter_staff")) {
-            menu.add(new NavItem("Dashboard", "/apuasc-war/ReceptionistDashboardServlet"));
+            menu.add(new NavItem("Dashboard", "/apuasc-war/Dashboard/ReceptionistDashboard.jsp"));
             menu.add(new NavItem("Appointments", "../Pages/Receptionist/Appointments.jsp"));
             menu.add(new NavItem("Customer", "../Pages/Receptionist/ManageCustomers.jsp"));
             menu.add(new NavItem("Payments", "../Pages/Receptionist/Payments.jsp"));
             menu.add(new NavItem("Notifications", "../Pages/Common/Notifications.jsp"));
         } else if (normalizedRole.equals("manager") || normalizedRole.equals("super_admin") || normalizedRole.equals("admin")) {
-            menu.add(new NavItem("Dashboard", "/apuasc-war/ManagerDashboardServlet"));
-            menu.add(new NavItem("Users", "../Pages/Manager/ManageUsers.jsp"));
-            menu.add(new NavItem("Services", "../Pages/Manager/Services.jsp"));
+            menu.add(new NavItem("Dashboard", "/apuasc-war/Dashboard/ManagerDashboard.jsp"));
+            menu.add(new NavItem("User Directory", "../Pages/Manager/ManageUsers.jsp"));
             menu.add(new NavItem("Appointments", "../Pages/Manager/Appointments.jsp"));
+            menu.add(new NavItem("Services", "../Pages/Manager/Services.jsp"));
             menu.add(new NavItem("Payments", "../Pages/Manager/Payments.jsp"));
             menu.add(new NavItem("Reports", "../Pages/Manager/Reports.jsp"));
             menu.add(new NavItem("Settings", "../Pages/Manager/Settings.jsp"));
             menu.add(new NavItem("Analytics", "../Pages/Manager/Analytics.jsp"));
         } else if (normalizedRole.equals("technician")) {
-            menu.add(new NavItem("Dashboard", "/apuasc-war/TechnicianDashboardServlet"));
+            menu.add(new NavItem("Dashboard", "/apuasc-war/Dashboard/TechnicianDashboard.jsp"));
             menu.add(new NavItem("Work Orders", "../Pages/Technician/WorkOrders.jsp"));
             menu.add(new NavItem("Schedule", "../Pages/Technician/Schedule.jsp"));
             menu.add(new NavItem("Assigned Tasks", "../Pages/Technician/AssignedTasks.jsp"));
         } else if (normalizedRole.equals("customer")) {
-            menu.add(new NavItem("Dashboard", "/apuasc-war/CustomerDashboardServlet"));
+            menu.add(new NavItem("Dashboard", "/apuasc-war/Dashboard/CustomerDashboard.jsp"));
             menu.add(new NavItem("My Appointments", "../Pages/Customer/MyAppointments.jsp"));
             menu.add(new NavItem("Service History", "../Pages/Customer/ServiceHistory.jsp"));
-            menu.add(new NavItem("Invoices", "../Pages/Customer/Invoices.jsp"));
+            menu.add(new NavItem("Payment History", "../Pages/Customer/PaymentHistory.jsp"));
         } else {
             System.out.println("WARNING: Unknown role '" + normalizedRole + "' - no menu items generated");
         }

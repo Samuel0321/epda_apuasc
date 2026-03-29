@@ -1,19 +1,15 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package models;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.io.Serializable;
-import java.util.Date;
-import java.time.LocalDateTime;
-import model.User;
-//import java.sql.Timestamp;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 
 /**
@@ -21,109 +17,136 @@ import model.User;
  * @author pinju
  */
 @Entity
+@Table(name = "APPOINTMENTS")
 public class Appointments implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private Integer id;
-    @ManyToOne
-    private User customer;
+    @Column(name = "APPOINTMENT_ID")
+    private Integer appointment_id;
+    @Column(name = "CUSTOMER_ID")
+    private Integer customer_id;
+    @Column(name = "TECHNICIAN_ID")
+    private Integer technician_id;
+    @Column(name = "TECHNICIAN_NOTES")
+    private String technician_notes;
+    @Column(name = "APPOINTMENT_DATE")
+    private LocalDate appointment_date;
+    @Column(name = "APPOINTMENT_TIME")
+    private LocalTime appointment_time;
+    @Column(name = "STATUS")
+    private String status;
+    @Column(name = "TOTAL_AMOUNT")
+    private BigDecimal total_amount;
+    @Column(name = "CUSTOMER_NOTES")
+    private String customer_notes;
+    @Column(name = "CUSTOMER_FEEDBACK")
+    private String customer_feedback;
+    @Column(name = "COUNTER_STAFF_COMMENT")
+    private String counter_staff_comment;
 
-    @ManyToOne
-    private User technician;
-
-//    private Integer Customer_id;
-    //    private Integer Technician_id ;
-    private Date Appointment_date;
-    private LocalDateTime Appointment_time;
-    private String Status;
-    private Integer Total_amount; //record purposes to have a accurate profit report
-    private String Technician_notes;
-    
-    public Appointments(Integer id, User customer, User technician, Date Appointment_date, LocalDateTime Appointment_time, String Status, Integer Total_amount, String Technician_notes) {
-        this.id = id;
-        this.customer = customer;
-        this.technician = technician;
-        this.Appointment_date = Appointment_date;
-        this.Appointment_time = Appointment_time;
-        this.Status = Status;
-        this.Total_amount = Total_amount;
-        this.Technician_notes = Technician_notes;
+    public Integer getAppointment_id() {
+        return appointment_id;
     }
 
-    public String getStatus() {
-        return Status;
+    public void setAppointment_id(Integer appointment_id) {
+        this.appointment_id = appointment_id;
     }
 
-    public void setStatus(String Status) {
-        this.Status = Status;
+    public Integer getCustomer_id() {
+        return customer_id;
     }
 
-    public Appointments() {
+    public void setCustomer_id(Integer customer_id) {
+        this.customer_id = customer_id;
     }
 
-    public Integer getId() {
-        return id;
+    public Integer getTechnician_id() {
+        return technician_id;
+    }
+
+    public void setTechnician_id(Integer technician_id) {
+        this.technician_id = technician_id;
     }
 
     public String getTechnician_notes() {
-        return Technician_notes;
+        return technician_notes;
     }
 
-    public void setTechnician_notes(String Technician_notes) {
-        this.Technician_notes = Technician_notes;
+    public void setTechnician_notes(String technician_notes) {
+        this.technician_notes = technician_notes;
     }
 
-    public User getCustomer() {
-        return customer;
+    public LocalDate getAppointment_date() {
+        return appointment_date;
     }
 
-    public void setCustomer(User customer) {
-        this.customer = customer;
+    public void setAppointment_date(LocalDate appointment_date) {
+        this.appointment_date = appointment_date;
     }
 
-    public User getTechnician() {
-        return technician;
+    public LocalTime getAppointment_time() {
+        return appointment_time;
     }
 
-    public void setTechnician(User technician) {
-        this.technician = technician;
+    public void setAppointment_time(LocalTime appointment_time) {
+        this.appointment_time = appointment_time;
     }
 
-
-    public Date getAppointment_date() {
-        return Appointment_date;
+    public String getStatus() {
+        return status;
     }
 
-    public void setAppointment_date(Date Appointment_date) {
-        this.Appointment_date = Appointment_date;
+    public void setStatus(String status) {
+        this.status = status;
     }
 
-    public LocalDateTime getAppointment_time() {
-        return Appointment_time;
+    public BigDecimal getTotal_amount() {
+        return total_amount;
     }
 
-    public void setAppointment_time(LocalDateTime Appointment_time) {
-        this.Appointment_time = Appointment_time;
+    public void setTotal_amount(BigDecimal total_amount) {
+        this.total_amount = total_amount;
     }
 
-    public Integer getTotal_amount() {
-        return Total_amount;
+    public String getCustomer_notes() {
+        return customer_notes;
     }
 
-    public void setTotal_amount(Integer Total_amount) {
-        this.Total_amount = Total_amount;
+    public void setCustomer_notes(String customer_notes) {
+        this.customer_notes = customer_notes;
+    }
+
+    public String getCustomer_feedback() {
+        return customer_feedback;
+    }
+
+    public void setCustomer_feedback(String customer_feedback) {
+        this.customer_feedback = customer_feedback;
+    }
+
+    public String getCounter_staff_comment() {
+        return counter_staff_comment;
+    }
+
+    public void setCounter_staff_comment(String counter_staff_comment) {
+        this.counter_staff_comment = counter_staff_comment;
+    }
+
+    public Integer getId() {
+        return appointment_id;
     }
 
     public void setId(Integer id) {
-        this.id = id;
+        this.appointment_id = id;
     }
 
     @Override
     public int hashCode() {
         int hash = 0;
-        hash += (id != null ? id.hashCode() : 0);
+        hash += (appointment_id != null ? appointment_id.hashCode() : 0);
         return hash;
     }
 
@@ -134,15 +157,13 @@ public class Appointments implements Serializable {
             return false;
         }
         Appointments other = (Appointments) object;
-        if ((this.id == null && other.id != null) || (this.id != null && !this.id.equals(other.id))) {
-            return false;
-        }
-        return true;
+        return !((this.appointment_id == null && other.appointment_id != null)
+                || (this.appointment_id != null && !this.appointment_id.equals(other.appointment_id)));
     }
 
     @Override
     public String toString() {
-        return "models.Appointments[ id=" + id + " ]";
+        return "models.Appointments[ id=" + appointment_id + " ]";
     }
     
 }
