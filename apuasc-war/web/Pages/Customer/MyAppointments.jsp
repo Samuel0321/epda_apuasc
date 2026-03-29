@@ -53,6 +53,8 @@
         successMessage = "Your quotation decision was saved successfully.";
     } else if (request.getParameter("feedbackSaved") != null) {
         successMessage = "Thank you. Your feedback was saved successfully.";
+    } else if (request.getParameter("cancelled") != null) {
+        successMessage = "Appointment cancelled successfully.";
     }
 %>
 <!DOCTYPE html>
@@ -150,7 +152,7 @@
                     String filterClass = status.replace(' ', '_').toLowerCase();
                     if ("WAITING APPROVAL".equals(status)) { filterClass = "waiting_approval"; }
                     if ("DELAYED".equals(status)) { filterClass = "delayed"; }
-                    if ("COMPLETED".equals(status) || "PAID".equals(status) || "UNPAID".equals(status) || "REJECTED".equals(status)) { filterClass = "completed_group"; }
+                    if ("COMPLETED".equals(status) || "PAID".equals(status) || "UNPAID".equals(status) || "REJECTED".equals(status) || "CANCELLED".equals(status)) { filterClass = "completed_group"; }
                     
                     String aptServices = serviceNames.get(apt.getAppointment_id());
                     String tName = technicianNames.get(apt.getAppointment_id());
@@ -208,6 +210,12 @@
                             <% } %>
                             <% if ("PAID".equals(status) && (apt.getCustomer_feedback() == null || apt.getCustomer_feedback().trim().isEmpty())) { %>
                                 <button class="task-btn btn-primary" type="button" onclick="openFeedbackModal('<%= apt.getAppointment_id() %>', '<%= escapeForJs(aptServices) %>')">Provide Feedback</button>
+                            <% } %>
+                            <% if (Arrays.asList("PENDING","ASSIGNED","WAITING APPROVAL","ACCEPTED","DELAYED","REJECTED").contains(status)) { %>
+                                <form action="<%= request.getContextPath() %>/AppointmentCancellationServlet" method="POST" style="margin:0;">
+                                    <input type="hidden" name="appointmentId" value="<%= apt.getAppointment_id() %>">
+                                    <button type="submit" class="task-btn" style="background:#ef4444;color:white;">Cancel Appointment</button>
+                                </form>
                             <% } %>
                             <button class="task-btn btn-secondary" type="button" onclick="openAppointmentModal('#APT<%= String.format("%03d", apt.getAppointment_id()) %>', '<%= apt.getAppointment_date() %>', '<%= apt.getAppointment_time() %>', '<%= escapeForJs(aptServices) %>', '<%= escapeForJs(tName) %>', '<%= escapeForJs(displayCustomerStatus(status)) %>', '<%= escapeForJs(displayAmount(apt.getTotal_amount())) %>', '<%= escapeForJs(apt.getCustomer_notes()) %>', '<%= escapeForJs(sanitizeComment(apt.getCounter_staff_comment())) %>', '<%= escapeForJs(apt.getTechnician_notes()) %>', '<%= escapeForJs(apt.getCustomer_feedback()) %>')">View Details</button>
                         </div>
@@ -351,6 +359,7 @@
             case "COMPLETED": return "Find Receptionist For Payment";
             case "UNPAID": return "Find Receptionist For Payment";
             case "PAID": return "Paid";
+            case "CANCELLED": return "Cancelled";
             case "REJECTED": return "Quotation Rejected";
             default: return normalized;
         }

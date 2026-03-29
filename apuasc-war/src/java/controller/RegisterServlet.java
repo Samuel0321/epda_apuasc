@@ -12,6 +12,7 @@ import models.UsersEntity;
 import models.UsersEntityFacade;
 import utils.CountryLoader;
 import utils.hashPassword;
+import utils.NotificationService;
 
 public class RegisterServlet extends HttpServlet {
 
@@ -75,6 +76,12 @@ public class RegisterServlet extends HttpServlet {
 
         try {
             userFacade.create(user);
+            if (currentUser != null && isManager(currentUser.getRole()) && !"customer".equals(role)) {
+                NotificationService.notifyUsers(getServletContext(), extractUserIds(userFacade.findByRoles(java.util.Arrays.asList("manager"))), "staff",
+                        "New staff registered",
+                        currentUser.getName() + " registered a new " + role + " account for " + user.getName() + ".",
+                        request.getContextPath() + "/Pages/Manager/ManageUsers.jsp");
+            }
             if (currentUser != null && isManager(currentUser.getRole())) {
                 response.sendRedirect(request.getContextPath() + "/Pages/Manager/ManageUsers.jsp?created=1");
             } else {
@@ -175,5 +182,18 @@ public class RegisterServlet extends HttpServlet {
 
     private String trim(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private java.util.List<Integer> extractUserIds(java.util.List<UsersEntity> users) {
+        java.util.List<Integer> ids = new java.util.ArrayList<Integer>();
+        if (users == null) {
+            return ids;
+        }
+        for (UsersEntity user : users) {
+            if (user != null && user.getId() != null) {
+                ids.add(user.getId());
+            }
+        }
+        return ids;
     }
 }

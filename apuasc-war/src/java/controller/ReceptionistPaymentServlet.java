@@ -22,6 +22,7 @@ import models.ServiceEntity;
 import models.ServiceEntityFacade;
 import models.UsersEntity;
 import models.UsersEntityFacade;
+import utils.NotificationService;
 
 public class ReceptionistPaymentServlet extends HttpServlet {
 
@@ -96,6 +97,21 @@ public class ReceptionistPaymentServlet extends HttpServlet {
         paymentRecord.setReceived_by(operatorName);
         paymentRecordFacade.create(paymentRecord);
 
+        NotificationService.notifyUser(getServletContext(), currentUser.getId(), "payment",
+                "Payment recorded",
+                "You recorded payment for appointment #APT" + appointment.getAppointment_id() + ".",
+                request.getContextPath() + "/Pages/Receptionist/Payments.jsp");
+        if (appointment.getCustomer_id() != null) {
+            NotificationService.notifyUser(getServletContext(), appointment.getCustomer_id(), "payment",
+                    "Payment confirmation",
+                    "Your payment for appointment #APT" + appointment.getAppointment_id() + " was received successfully.",
+                    request.getContextPath() + "/Pages/Customer/MyAppointments.jsp");
+        }
+        NotificationService.notifyUsers(getServletContext(), extractUserIds(userFacade.findByRoles(java.util.Arrays.asList("manager"))), "payment",
+                "Payment received",
+                "Payment for appointment #APT" + appointment.getAppointment_id() + " was recorded by " + operatorName + ".",
+                request.getContextPath() + "/Pages/Manager/Payments.jsp");
+
         response.sendRedirect(request.getContextPath() + "/Pages/Receptionist/Payments.jsp?paid=1");
     }
 
@@ -129,5 +145,18 @@ public class ReceptionistPaymentServlet extends HttpServlet {
             }
         }
         return names.isEmpty() ? "Service Request" : String.join(", ", names);
+    }
+
+    private List<Integer> extractUserIds(List<UsersEntity> users) {
+        List<Integer> ids = new ArrayList<Integer>();
+        if (users == null) {
+            return ids;
+        }
+        for (UsersEntity user : users) {
+            if (user != null && user.getId() != null) {
+                ids.add(user.getId());
+            }
+        }
+        return ids;
     }
 }

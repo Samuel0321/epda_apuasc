@@ -63,7 +63,7 @@
         <a href="<%= contextPath %>/Pages/Manager/ManageUsers.jsp" class="nav-item <%= currentURI.contains("ManageUsers") ? "active" : "" %>">User Directory</a>
         <a href="<%= contextPath %>/Pages/Manager/Appointments.jsp" class="nav-item <%= currentURI.contains("Pages/Manager/Appointments") ? "active" : "" %>">Appointments</a>
         <a href="<%= contextPath %>/Pages/Manager/Services.jsp" class="nav-item <%= currentURI.contains("Services") ? "active" : "" %>">Service Pricing</a>
-        <a href="<%= contextPath %>/Pages/Manager/Reports.jsp" class="nav-item <%= currentURI.contains("Reports") ? "active" : "" %>">Reports</a>
+        <a href="<%= contextPath %>/Pages/Manager/Reports.jsp" class="nav-item <%= currentURI.contains("Reports") || currentURI.contains("ManagerReportsPageServlet") ? "active" : "" %>">Reports</a>
         <a href="<%= contextPath %>/Pages/Manager/Payments.jsp" class="nav-item <%= currentURI.contains("Payments") ? "active" : "" %>">Payments</a>
     <% } else { %>
         <a href="<%= contextPath %>/Dashboard/CustomerDashboard.jsp" class="nav-item <%= currentURI.contains("CustomerDashboard") ? "active" : "" %>">Dashboard</a>

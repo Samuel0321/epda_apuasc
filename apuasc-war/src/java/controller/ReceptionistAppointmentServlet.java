@@ -18,6 +18,7 @@ import models.ServiceEntity;
 import models.ServiceEntityFacade;
 import models.UsersEntity;
 import models.UsersEntityFacade;
+import utils.NotificationService;
 
 public class ReceptionistAppointmentServlet extends HttpServlet {
 
@@ -118,6 +119,22 @@ public class ReceptionistAppointmentServlet extends HttpServlet {
         appointmentService.setService_id(service.getId());
         appointmentService.setService_price(service.getPrice());
         appointmentServiceFacade.create(appointmentService);
+
+        String slotText = appointmentDate + " " + appointmentTime;
+        NotificationService.notifyUser(getServletContext(), currentUser.getId(), "appointment",
+                "Appointment created",
+                "You created " + service.getService_name() + " for " + customer.getName() + " at " + slotText + ".",
+                request.getContextPath() + "/Pages/Receptionist/Appointments.jsp");
+        NotificationService.notifyUser(getServletContext(), customer.getId(), "appointment",
+                "Appointment confirmation",
+                "Reception scheduled your " + service.getService_name() + " appointment for " + slotText + ".",
+                request.getContextPath() + "/Pages/Customer/MyAppointments.jsp");
+        if (technicianId != null) {
+            NotificationService.notifyUser(getServletContext(), technicianId, "appointment",
+                    "New technician assignment",
+                    "You were assigned to " + customer.getName() + "'s " + service.getService_name() + " appointment at " + slotText + ".",
+                    request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp");
+        }
 
         response.sendRedirect(request.getContextPath() + "/Pages/Receptionist/NewAppointment.jsp?created=1");
     }

@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import models.UsersEntity;
 import models.UsersEntityFacade;
+import utils.NotificationService;
 
 public class ManagerUserServlet extends HttpServlet {
 
@@ -119,6 +120,25 @@ public class ManagerUserServlet extends HttpServlet {
         int current = targetUser.getHave_Manager_access() == null ? 0 : targetUser.getHave_Manager_access();
         targetUser.setHave_Manager_access(current == 1 ? 0 : 1);
         userFacade.edit(targetUser);
+        if (targetUser.getHave_Manager_access() != null && targetUser.getHave_Manager_access() == 1) {
+            NotificationService.notifyUser(getServletContext(), targetUser.getId(), "staff",
+                    "Manager access granted",
+                    "Manager access was given to you by " + currentUser.getName() + ".",
+                    request.getContextPath() + "/Pages/Manager/ManageUsers.jsp");
+            NotificationService.notifyUser(getServletContext(), currentUser.getId(), "staff",
+                    "Manager access updated",
+                    "You granted manager access to " + targetUser.getName() + ".",
+                    request.getContextPath() + "/Pages/Manager/ManageUsers.jsp");
+        } else {
+            NotificationService.notifyUser(getServletContext(), targetUser.getId(), "staff",
+                    "Manager access removed",
+                    "Manager access was removed from your account by " + currentUser.getName() + ".",
+                    request.getContextPath() + "/Pages/Manager/ManageUsers.jsp");
+            NotificationService.notifyUser(getServletContext(), currentUser.getId(), "staff",
+                    "Manager access updated",
+                    "You removed manager access from " + targetUser.getName() + ".",
+                    request.getContextPath() + "/Pages/Manager/ManageUsers.jsp");
+        }
         redirect(response, request, "accessUpdated=1");
     }
 

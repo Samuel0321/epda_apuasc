@@ -8,14 +8,22 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import models.ServiceEntity;
 import models.ServiceEntityFacade;
 import models.UsersEntity;
+import models.UsersEntityFacade;
+import utils.NotificationService;
 
 public class ManagerServiceServlet extends HttpServlet {
 
     @EJB
     private ServiceEntityFacade serviceFacade;
+
+    @EJB
+    private UsersEntityFacade userFacade;
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -38,7 +46,11 @@ public class ManagerServiceServlet extends HttpServlet {
             Integer serviceId = parseInteger(request.getParameter("serviceId"));
             ServiceEntity service = serviceId == null ? null : serviceFacade.find(serviceId);
             if (service != null) {
+                String serviceName = service.getService_name();
                 serviceFacade.remove(service);
+                notifyUsers(request, "staff", "Service pricing removed",
+                        currentUser.getName() + " removed the service pricing record for " + serviceName + ".",
+                        request.getContextPath() + "/Pages/Manager/Services.jsp");
             }
             response.sendRedirect(request.getContextPath() + "/Pages/Manager/Services.jsp?deleted=1");
             return;
@@ -64,9 +76,15 @@ public class ManagerServiceServlet extends HttpServlet {
 
             if ("create".equals(action)) {
                 serviceFacade.create(service);
+                notifyUsers(request, "staff", "Service pricing created",
+                        currentUser.getName() + " added a new service pricing record for " + service.getService_name() + ".",
+                        request.getContextPath() + "/Pages/Manager/Services.jsp");
                 response.sendRedirect(request.getContextPath() + "/Pages/Manager/Services.jsp?created=1");
             } else {
                 serviceFacade.edit(service);
+                notifyUsers(request, "staff", "Service pricing updated",
+                        currentUser.getName() + " updated the pricing record for " + service.getService_name() + ".",
+                        request.getContextPath() + "/Pages/Manager/Services.jsp");
                 response.sendRedirect(request.getContextPath() + "/Pages/Manager/Services.jsp?updated=1");
             }
             return;
@@ -93,5 +111,22 @@ public class ManagerServiceServlet extends HttpServlet {
         } catch (Exception ex) {
             return BigDecimal.ZERO;
         }
+    }
+
+    private void notifyUsers(HttpServletRequest request, String type, String title, String message, String link) {
+        NotificationService.notifyUsers(getServletContext(), extractUserIds(userFacade.findByRoles(Arrays.asList("manager", "receptionist"))), type, title, message, link);
+    }
+
+    private List<Integer> extractUserIds(List<UsersEntity> users) {
+        List<Integer> ids = new ArrayList<Integer>();
+        if (users == null) {
+            return ids;
+        }
+        for (UsersEntity user : users) {
+            if (user != null && user.getId() != null) {
+                ids.add(user.getId());
+            }
+        }
+        return ids;
     }
 }

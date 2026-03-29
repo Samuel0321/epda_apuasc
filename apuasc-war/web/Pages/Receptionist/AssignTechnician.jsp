@@ -5,7 +5,7 @@
     Description: Receptionist assigns a technician to a pending appointment
 --%>
 
-<%@page import="java.util.List,java.util.Arrays,java.util.LinkedHashMap,java.util.Map,java.time.format.DateTimeFormatter,models.UsersEntity,models.UsersEntityFacade,models.Appointments,models.AppointmentsFacade,models.AppointmentService,models.AppointmentServiceFacade,models.ServiceEntity,models.ServiceEntityFacade,utils.EjbLookup"%>
+<%@page import="java.util.List,java.util.Arrays,java.util.LinkedHashMap,java.util.Map,java.time.format.DateTimeFormatter,models.UsersEntity,models.UsersEntityFacade,models.Appointments,models.AppointmentsFacade,models.AppointmentService,models.AppointmentServiceFacade,models.ServiceEntity,models.ServiceEntityFacade,utils.EjbLookup,utils.NotificationService"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%
     UsersEntityFacade usersFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
@@ -44,6 +44,7 @@
         String specialNotes = request.getParameter("notes");
         if (techIdStr != null && !techIdStr.isEmpty()) {
             Integer technicianId = Integer.parseInt(techIdStr);
+            UsersEntity actingReceptionist = session.getAttribute("user") instanceof UsersEntity ? usersFacade.find(((UsersEntity) session.getAttribute("user")).getId()) : null;
             if (appointmentsFacade.isPastAppointmentSlot(appointment.getAppointment_date(), appointment.getAppointment_time())) {
                 response.sendRedirect("AssignTechnician.jsp?id=" + appointment.getId() + "&error=PastDateTime");
                 return;
@@ -53,12 +54,41 @@
                 response.sendRedirect("AssignTechnician.jsp?id=" + appointment.getId() + "&error=TechnicianBusy");
                 return;
             }
+            Integer previousTechnicianId = appointment.getTechnician_id();
             appointment.setTechnician_id(technicianId);
             appointment.setStatus("ASSIGNED");
             if (specialNotes != null && !specialNotes.trim().isEmpty()) {
                 appointment.setTechnician_notes(specialNotes);
             }
             appointmentsFacade.edit(appointment);
+            UsersEntity customer = appointment.getCustomer_id() == null ? null : usersFacade.find(appointment.getCustomer_id());
+            UsersEntity assignedTech = usersFacade.find(technicianId);
+            String serviceLabel = serviceName == null || serviceName.trim().isEmpty() ? "service appointment" : serviceName;
+            String slotText = appointment.getAppointment_date() + " " + appointment.getAppointment_time();
+            if (assignedTech != null) {
+                NotificationService.notifyUser(application, assignedTech.getId(), "appointment",
+                        "Technician assignment confirmed",
+                        "You were assigned to " + (customer == null ? "a customer" : customer.getName()) + "'s " + serviceLabel + " at " + slotText + ".",
+                        request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp");
+            }
+            if (previousTechnicianId != null && !previousTechnicianId.equals(technicianId)) {
+                NotificationService.notifyUser(application, previousTechnicianId, "appointment",
+                        "Technician assignment changed",
+                        "You were removed from appointment #APT" + appointment.getId() + ".",
+                        request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp");
+            }
+            if (customer != null) {
+                NotificationService.notifyUser(application, customer.getId(), "appointment",
+                        "Technician updated",
+                        (assignedTech == null ? "A technician" : assignedTech.getName()) + " is now handling your appointment at " + slotText + ".",
+                        request.getContextPath() + "/Pages/Customer/MyAppointments.jsp");
+            }
+            if (actingReceptionist != null) {
+                NotificationService.notifyUser(application, actingReceptionist.getId(), "appointment",
+                        "Technician assigned successfully",
+                        (assignedTech == null ? "A technician" : assignedTech.getName()) + " was assigned to appointment #APT" + appointment.getId() + ".",
+                        request.getContextPath() + "/Pages/Receptionist/Appointments.jsp");
+            }
             response.sendRedirect("Appointments.jsp?assigned=1");
             return;
         }

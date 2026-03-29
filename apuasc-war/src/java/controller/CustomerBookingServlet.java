@@ -18,6 +18,7 @@ import models.ServiceEntity;
 import models.ServiceEntityFacade;
 import models.UsersEntity;
 import models.UsersEntityFacade;
+import utils.NotificationService;
 
 public class CustomerBookingServlet extends HttpServlet {
 
@@ -104,6 +105,17 @@ public class CustomerBookingServlet extends HttpServlet {
         appointmentService.setService_price(service.getPrice());
         appointmentServiceFacade.create(appointmentService);
 
+        String appointmentLink = request.getContextPath() + "/Pages/Customer/MyAppointments.jsp";
+        String slotText = appointmentDate + " " + appointmentTime;
+        NotificationService.notifyUser(getServletContext(), currentUser.getId(), "appointment",
+                "Appointment booked successfully",
+                "Your " + service.getService_name() + " appointment was received for " + slotText + ". Reception will review it shortly.",
+                appointmentLink);
+        NotificationService.notifyUsers(getServletContext(), extractUserIds(userFacade.findByRoles(java.util.Arrays.asList("receptionist"))), "appointment",
+                "New customer appointment received",
+                currentUser.getName() + " booked " + service.getService_name() + " for " + slotText + ".",
+                request.getContextPath() + "/Pages/Receptionist/Appointments.jsp");
+
         response.sendRedirect(request.getContextPath() + "/Pages/Customer/MyAppointments.jsp?booked=1");
     }
 
@@ -142,5 +154,18 @@ public class CustomerBookingServlet extends HttpServlet {
         LocalTime start = LocalTime.of(10, 0);
         LocalTime end = LocalTime.of(16, 0);
         return !value.isBefore(start) && !value.isAfter(end);
+    }
+
+    private java.util.List<Integer> extractUserIds(java.util.List<UsersEntity> users) {
+        java.util.List<Integer> ids = new java.util.ArrayList<Integer>();
+        if (users == null) {
+            return ids;
+        }
+        for (UsersEntity user : users) {
+            if (user != null && user.getId() != null) {
+                ids.add(user.getId());
+            }
+        }
+        return ids;
     }
 }

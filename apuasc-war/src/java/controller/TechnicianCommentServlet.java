@@ -14,6 +14,7 @@ import models.AppointmentsFacade;
 import models.UsersEntity;
 import models.UsersEntityFacade;
 import models.AppointmentServiceFacade;
+import utils.NotificationService;
 
 public class TechnicianCommentServlet extends HttpServlet {
 
@@ -60,6 +61,10 @@ public class TechnicianCommentServlet extends HttpServlet {
             appointment.setStatus("COMPLETED");
             appointment.setCounter_staff_comment("Repair work completed. Please find receptionist at the counter for payment and vehicle collection.");
             appointmentsFacade.edit(appointment);
+            notifyRelevantParties(request, appointment, currentUser,
+                    "Repair completed",
+                    "Repair for appointment #APT" + appointment.getAppointment_id() + " is completed and ready for payment.",
+                    "Your repair is completed. Please find receptionist at the counter for payment and vehicle collection.");
             response.sendRedirect(request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp?completed=1");
             return;
         }
@@ -87,6 +92,10 @@ public class TechnicianCommentServlet extends HttpServlet {
             appointment.setCounter_staff_comment(appointmentsFacade.buildDelayedComment(extraHours,
                     "Repair is delayed and needs about " + extraHours + " more hour(s) to complete. Reception may reassign upcoming appointments if needed."));
             appointmentsFacade.edit(appointment);
+            notifyRelevantParties(request, appointment, currentUser,
+                    "Repair delayed",
+                    "Repair for appointment #APT" + appointment.getAppointment_id() + " was marked delayed and needs about " + extraHours + " more hour(s).",
+                    "Your repair needs about " + extraHours + " more hour(s) to complete.");
 
             List<Appointments> technicianAppointments = appointmentsFacade.findByTechnicianId(currentUser.getId());
             for (Appointments impacted : technicianAppointments) {
@@ -114,6 +123,12 @@ public class TechnicianCommentServlet extends HttpServlet {
                 impacted.setStatus("DELAYED");
                 impacted.setCounter_staff_comment("Your appointment is delayed because the previous repair needs more time. Reception may reassign another technician or contact you with an updated slot.");
                 appointmentsFacade.edit(impacted);
+                if (impacted.getCustomer_id() != null) {
+                    NotificationService.notifyUser(getServletContext(), impacted.getCustomer_id(), "appointment",
+                            "Appointment delayed",
+                            "Your appointment is delayed because the previous repair needs more time. Reception may reassign another technician or update your slot.",
+                            request.getContextPath() + "/Pages/Customer/MyAppointments.jsp");
+                }
             }
 
             response.sendRedirect(request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp?delayed=1");
@@ -135,5 +150,31 @@ public class TechnicianCommentServlet extends HttpServlet {
 
     private String trim(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private void notifyRelevantParties(HttpServletRequest request, Appointments appointment, UsersEntity technician,
+            String title, String staffMessage, String customerMessage) {
+        NotificationService.notifyUser(getServletContext(), technician.getId(), "appointment",
+                title, "You updated appointment #APT" + appointment.getAppointment_id() + ".",
+                request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp");
+        if (appointment.getCustomer_id() != null) {
+            NotificationService.notifyUser(getServletContext(), appointment.getCustomer_id(), "appointment",
+                    title, customerMessage, request.getContextPath() + "/Pages/Customer/MyAppointments.jsp");
+        }
+        NotificationService.notifyUsers(getServletContext(), extractUserIds(userFacade.findByRoles(java.util.Arrays.asList("receptionist"))), "appointment",
+                title, staffMessage, request.getContextPath() + "/Pages/Receptionist/Appointments.jsp");
+    }
+
+    private java.util.List<Integer> extractUserIds(java.util.List<UsersEntity> users) {
+        java.util.List<Integer> ids = new java.util.ArrayList<Integer>();
+        if (users == null) {
+            return ids;
+        }
+        for (UsersEntity user : users) {
+            if (user != null && user.getId() != null) {
+                ids.add(user.getId());
+            }
+        }
+        return ids;
     }
 }

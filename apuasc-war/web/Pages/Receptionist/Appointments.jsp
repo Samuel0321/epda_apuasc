@@ -412,6 +412,8 @@
                                 badgeClass = "badge-completed";
                             } else if ("PAID".equals(status)) {
                                 badgeClass = "badge-paid";
+                            } else if ("CANCELLED".equals(status)) {
+                                badgeClass = "badge-rejected";
                             }
                     %>
                     <tr class="appointment-row" data-status="<%= status %>" data-date="<%= (appointment.getAppointment_date() == null ? "" : appointment.getAppointment_date().toString()) %>">
@@ -438,6 +440,12 @@
                                 <form method="post" action="<%= request.getContextPath() %>/ReceptionistPaymentServlet" style="display:inline;">
                                     <input type="hidden" name="appointmentId" value="<%= appointmentId %>">
                                     <button type="submit" class="btn-small btn-collect">Paid</button>
+                                </form>
+                                <% } %>
+                                <% if (Arrays.asList("PENDING","ASSIGNED","WAITING APPROVAL","ACCEPTED","DELAYED","REJECTED").contains(status)) { %>
+                                <form method="post" action="<%= request.getContextPath() %>/AppointmentCancellationServlet" style="display:inline;">
+                                    <input type="hidden" name="appointmentId" value="<%= appointmentId %>">
+                                    <button type="submit" class="btn-small" style="background:#fecaca;color:#991b1b;">Cancel</button>
                                 </form>
                                 <% } %>
                                 <button class="btn-small btn-view"
@@ -627,6 +635,7 @@
             case "COMPLETED": return "Ready For Payment";
             case "UNPAID": return "Payment Pending";
             case "PAID": return "Paid";
+            case "CANCELLED": return "Cancelled";
             default: return status;
         }
     }

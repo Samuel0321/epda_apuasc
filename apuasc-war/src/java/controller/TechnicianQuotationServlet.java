@@ -16,6 +16,7 @@ import models.ServiceEntity;
 import models.ServiceEntityFacade;
 import models.UsersEntity;
 import models.UsersEntityFacade;
+import utils.NotificationService;
 
 public class TechnicianQuotationServlet extends HttpServlet {
 
@@ -87,6 +88,23 @@ public class TechnicianQuotationServlet extends HttpServlet {
         appointment.setCounter_staff_comment("Technician prepared the quotation. Awaiting customer decision before repair work begins.");
         appointmentsFacade.edit(appointment);
 
+        UsersEntity customer = appointment.getCustomer_id() == null ? null : userFacade.find(appointment.getCustomer_id());
+        String customerName = customer == null ? "Customer" : customer.getName();
+        NotificationService.notifyUser(getServletContext(), currentUser.getId(), "appointment",
+                "Quotation submitted",
+                "Your quotation for " + customerName + " was sent successfully.",
+                request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp");
+        if (customer != null) {
+            NotificationService.notifyUser(getServletContext(), customer.getId(), "appointment",
+                    "Quotation ready for review",
+                    "Your technician prepared a quotation. Please review and accept or reject it.",
+                    request.getContextPath() + "/Pages/Customer/MyAppointments.jsp");
+        }
+        NotificationService.notifyUsers(getServletContext(), extractUserIds(userFacade.findByRoles(java.util.Arrays.asList("receptionist"))), "appointment",
+                "Quotation prepared",
+                "Quotation for " + customerName + " is ready for customer review.",
+                request.getContextPath() + "/Pages/Receptionist/Appointments.jsp");
+
         response.sendRedirect(request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp?quoted=1");
     }
 
@@ -100,5 +118,18 @@ public class TechnicianQuotationServlet extends HttpServlet {
 
     private String trim(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private java.util.List<Integer> extractUserIds(java.util.List<UsersEntity> users) {
+        java.util.List<Integer> ids = new java.util.ArrayList<Integer>();
+        if (users == null) {
+            return ids;
+        }
+        for (UsersEntity user : users) {
+            if (user != null && user.getId() != null) {
+                ids.add(user.getId());
+            }
+        }
+        return ids;
     }
 }
