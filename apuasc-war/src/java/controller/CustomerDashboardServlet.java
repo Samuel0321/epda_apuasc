@@ -7,9 +7,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import models.UsersEntity;
-import utils.SidebarService;
-import java.util.List;
-import utils.NavItem;
 
 public class CustomerDashboardServlet extends HttpServlet {
 
@@ -24,13 +21,6 @@ public class CustomerDashboardServlet extends HttpServlet {
         }
 
         UsersEntity user = (UsersEntity) session.getAttribute("user");
-        String role = user.getRole();
-
-        // Populate menu if not already set
-        if (session.getAttribute("menu") == null) {
-            List<NavItem> menu = SidebarService.getMenu(role);
-            session.setAttribute("menu", menu);
-        }
 
         // Forward to CustomerDashboard JSP
         request.getRequestDispatcher("/Dashboard/CustomerDashboard.jsp").forward(request, response);

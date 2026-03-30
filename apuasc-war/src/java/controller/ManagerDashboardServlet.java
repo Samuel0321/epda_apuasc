@@ -1,17 +1,15 @@
 package controller;
 
 import jakarta.ejb.EJB;
-import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
+import java.util.List;
 import models.UsersEntity;
 import models.UsersEntityFacade;
-import utils.SidebarService;
-import java.util.List;
-import utils.NavItem;
 
 public class ManagerDashboardServlet extends HttpServlet {
 
@@ -29,13 +27,6 @@ public class ManagerDashboardServlet extends HttpServlet {
         }
 
         UsersEntity user = (UsersEntity) session.getAttribute("user");
-        String role = user.getRole();
-
-        // Populate menu if not already set
-        if (session.getAttribute("menu") == null) {
-            List<NavItem> menu = SidebarService.getMenu(role);
-            session.setAttribute("menu", menu);
-        }
 
         // Get user list for manager dashboard
         if (userFacade != null) {
