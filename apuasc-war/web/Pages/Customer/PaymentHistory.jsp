@@ -290,7 +290,7 @@
                         data-total="<%= appointment.getTotal_amount() %>"
                         data-status="<%= appointment.getStatus() %>"
                         data-notes="<%= appointment.getCounter_staff_comment() == null || appointment.getCounter_staff_comment().trim().isEmpty() ? "Receptionist will confirm this cash payment at the counter." : appointment.getCounter_staff_comment() %>">
-                        <td>#INV-APT-<%= appointment.getAppointment_id() %></td>
+                        <td>#INV-APT<%= appointment.getAppointment_id() %></td>
                         <td><%= appointment.getAppointment_date() %></td>
                         <td><%= serviceNames.get(appointment.getAppointment_id()) %></td>
                         <td class="amount">RM <%= appointment.getTotal_amount() %></td>
@@ -302,7 +302,7 @@
                         <td>
                             <div class="action-buttons">
                                 <button class="btn-small btn-view" type="button" onclick="openPaymentDetails(this)">Details</button>
-                                <button class="btn-small btn-service" type="button" onclick="showInvoice('INV-APT-<%= appointment.getAppointment_id() %>')">Invoice</button>
+                                <button class="btn-small btn-service" type="button" onclick="downloadInvoice('<%= appointment.getAppointment_id() %>')">Invoice</button>
                             </div>
                         </td>
                     </tr>
@@ -337,7 +337,7 @@
 
     function openPaymentDetails(button) {
         const row = button.closest("tr");
-        const invoiceNumber = "INV-APT-" + (row.dataset.id || "-");
+        const invoiceNumber = "INV-APT" + (row.dataset.id || "-");
         document.getElementById("paymentModalTitle").textContent = "Invoice #" + invoiceNumber;
         document.getElementById("paymentModalBody").innerHTML =
             '<div class="modal-block"><strong>Appointment</strong><div>#APT' + (row.dataset.id || "-") + '</div></div>' +
@@ -356,8 +356,8 @@
         document.getElementById("paymentModal").classList.remove("show");
     }
 
-    function showInvoice(invoiceNumber) {
-        alert('Invoice ' + invoiceNumber + ' is available from the receptionist after cash payment is confirmed.');
+    function downloadInvoice(appointmentId) {
+        window.location.href = '<%= request.getContextPath() %>/CustomerInvoiceDownloadServlet?appointmentId=' + encodeURIComponent(appointmentId);
     }
 
     window.onclick = function(event) {

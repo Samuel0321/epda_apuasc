@@ -55,8 +55,7 @@ public class AppointmentCancellationServlet extends HttpServlet {
             return;
         }
 
-        String status = trim(appointment.getStatus()).toUpperCase();
-        if (Arrays.asList("COMPLETED", "UNPAID", "PAID", "CANCELLED").contains(status)) {
+        if (!appointmentsFacade.canCancel(appointment)) {
             redirectBack(request, response, isCustomer, "error=InvalidStatus");
             return;
         }

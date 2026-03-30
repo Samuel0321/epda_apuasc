@@ -141,7 +141,7 @@
                     if (customerName == null || customerName.trim().isEmpty()) {
                         customerName = "Customer #" + item.getCustomer_id();
                     }
-                    String timeText = item.getAppointment_time() == null ? "-" : item.getAppointment_time().toString();
+                    String timeText = item.getAppointment_time() == null ? "-" : item.getAppointment_time().toString() + " - " + (appointmentsFacade.estimateAppointmentEndTime(item) == null ? "-" : appointmentsFacade.estimateAppointmentEndTime(item).toString());
                     String tagClass = "PENDING".equals(status) || "WAITING APPROVAL".equals(status) || "DELAYED".equals(status) ? "waiting" : "service";
             %>
             <div class="queue-item">

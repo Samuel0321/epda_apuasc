@@ -125,7 +125,7 @@
                 <div class="queue-item">
                     <div>
                         <strong><%= serviceNamesByAppointment.get(appointment.getAppointment_id()) %></strong><br>
-                        <small><%= appointment.getAppointment_date() %> | <%= appointment.getAppointment_time() %></small>
+                        <small><%= appointment.getAppointment_date() %> | <%= appointment.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(appointment) %></small>
                     </div>
                     <span class="status waiting"><%= displayCustomerStatus(appointment.getStatus()) %></span>
                 </div>

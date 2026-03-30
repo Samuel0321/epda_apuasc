@@ -129,6 +129,7 @@
         <% } else if (request.getParameter("delayed") != null) { %><div class="alert alert-success">Repair marked as delayed. The customer and overlapping later appointments are now flagged for receptionist follow-up.</div>
         <% } else if (request.getParameter("completed") != null) { %><div class="alert alert-success">Repair marked as completed. Reception can now collect payment from the customer.</div>
         <% } else if (request.getParameter("updated") != null) { %><div class="alert alert-success">Technician comment updated successfully.</div>
+        <% } else if ("FinishPreviousFirst".equals(request.getParameter("error"))) { %><div class="alert alert-error">Finish the earlier appointment first before preparing quotation for the next one.</div>
         <% } else if (request.getParameter("error") != null) { %><div class="alert alert-error">The requested technician action could not be completed.</div><% } %>
         <div class="summary-cards">
             <div class="summary-card"><div class="summary-label">Today</div><div class="summary-value"><%= todayCount %></div></div>
@@ -163,12 +164,14 @@
             <div class="task-card" data-filter="<%= filterGroup %>" data-is-today="<%= isTodayTask ? "1" : "0" %>">
                 <div class="task-head"><div class="task-id">#APT<%= appointment.getAppointment_id() %></div><div class="task-title"><%= customerNames.get(appointment.getAppointment_id()) %></div></div>
                 <div class="task-body">
-                    <div class="task-meta">Date: <%= appointment.getAppointment_date() %> | <%= appointment.getAppointment_time() %><br>Booking Note: <%= bookingNote %><br>Selected Services: <%= selectedServices.get(appointment.getAppointment_id()) %></div>
+                    <div class="task-meta">Date: <%= appointment.getAppointment_date() %> | <%= appointment.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(appointment) %><br>Booking Note: <%= bookingNote %><br>Selected Services: <%= selectedServices.get(appointment.getAppointment_id()) %></div>
                     <div class="status-box"><strong>Status: <%= statusLabel %></strong><div class="status-chip"><%= statusLabel %></div><% if (isFutureTask) { %><div class="date-lock-note">Waiting For Inspection Date</div><% } %></div>
                     <div class="quote-box"><strong>Technician Comment</strong><div style="margin-top:6px;"><%= technicianNote %></div><div style="margin-top:10px;font-weight:700;">Total: <%= displayAmount(appointment.getTotal_amount()) %></div></div>
                     <div class="task-actions">
-                        <% if ("ASSIGNED".equals(status) && !isFutureTask) { %>
+                        <% if ("ASSIGNED".equals(status) && !isFutureTask && !appointmentsFacade.hasEarlierUnfinishedAppointment(currentUser.getId(), appointment)) { %>
                         <button class="task-btn btn-primary" type="button" onclick="openQuotationModal('<%= appointment.getAppointment_id() %>','<%= escapeForJs(customerNames.get(appointment.getAppointment_id())) %>','<%= escapeForJs(bookingNote) %>','<%= escapeForJs(selectedServiceIds.get(appointment.getAppointment_id())) %>')">Prepare Quotation</button>
+                        <% } else if ("ASSIGNED".equals(status) && !isFutureTask && appointmentsFacade.hasEarlierUnfinishedAppointment(currentUser.getId(), appointment)) { %>
+                        <button class="task-btn btn-disabled" type="button" disabled>Finish Earlier Appointment First</button>
                         <% } else if ("ASSIGNED".equals(status) && isFutureTask) { %>
                         <button class="task-btn btn-disabled" type="button" disabled>Available On <%= appointment.getAppointment_date() %></button>
                         <% } %>
@@ -188,7 +191,7 @@
                         <% } else if (("COMPLETED".equals(status) || "UNPAID".equals(status) || "PAID".equals(status)) && isFutureTask) { %>
                         <button class="task-btn btn-disabled" type="button" disabled>Work Starts On <%= appointment.getAppointment_date() %></button>
                         <% } %>
-                        <button class="task-btn btn-secondary" type="button" onclick="openDetailsModal('#APT<%= appointment.getAppointment_id() %>','<%= escapeForJs(customerNames.get(appointment.getAppointment_id())) %>','<%= appointment.getAppointment_date() %>','<%= appointment.getAppointment_time() %>','<%= escapeForJs(statusLabel) %>','<%= escapeForJs(bookingNote) %>','<%= escapeForJs(selectedServices.get(appointment.getAppointment_id())) %>','<%= escapeForJs(displayAmount(appointment.getTotal_amount())) %>','<%= escapeForJs(technicianNote) %>')">View Details</button>
+                        <button class="task-btn btn-secondary" type="button" onclick="openDetailsModal('#APT<%= appointment.getAppointment_id() %>','<%= escapeForJs(customerNames.get(appointment.getAppointment_id())) %>','<%= appointment.getAppointment_date() %>','<%= appointment.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(appointment) %>','<%= escapeForJs(statusLabel) %>','<%= escapeForJs(bookingNote) %>','<%= escapeForJs(selectedServices.get(appointment.getAppointment_id())) %>','<%= escapeForJs(displayAmount(appointment.getTotal_amount())) %>','<%= escapeForJs(technicianNote) %>')">View Details</button>
                     </div>
                 </div>
             </div>

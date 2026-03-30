@@ -54,6 +54,15 @@ public class TechnicianQuotationServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp?error=InvalidAppointment");
             return;
         }
+        String appointmentStatus = appointment.getStatus() == null ? "" : appointment.getStatus().trim().toUpperCase();
+        if (!"ASSIGNED".equals(appointmentStatus)) {
+            response.sendRedirect(request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp?error=InvalidStatus");
+            return;
+        }
+        if (appointmentsFacade.hasEarlierUnfinishedAppointment(currentUser.getId(), appointment)) {
+            response.sendRedirect(request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp?error=FinishPreviousFirst");
+            return;
+        }
 
         String[] selectedServiceIds = request.getParameterValues("serviceIds");
         if (selectedServiceIds == null || selectedServiceIds.length == 0) {

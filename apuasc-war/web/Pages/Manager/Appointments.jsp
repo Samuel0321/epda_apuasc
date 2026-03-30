@@ -165,7 +165,7 @@
                         data-search="<%= (customerName + " " + technicianName + " " + serviceLabel + " " + status + " #APT" + appointment.getAppointment_id()).toLowerCase() %>"
                         data-id="#APT<%= String.format("%03d", appointment.getAppointment_id()) %>"
                         data-date="<%= appointment.getAppointment_date() %>"
-                        data-time="<%= appointment.getAppointment_time() %>"
+                        data-time="<%= appointment.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(appointment) %>"
                         data-customer="<%= escapeForJs(customerName) %>"
                         data-technician="<%= escapeForJs(technicianName) %>"
                         data-service="<%= escapeForJs(serviceLabel) %>"
@@ -176,7 +176,7 @@
                         data-staff-comment="<%= escapeForJs(appointment.getCounter_staff_comment()) %>"
                         data-feedback="<%= escapeForJs(appointment.getCustomer_feedback()) %>">
                         <td>#APT<%= String.format("%03d", appointment.getAppointment_id()) %></td>
-                        <td><%= appointment.getAppointment_date() %><br><small><%= appointment.getAppointment_time() %></small></td>
+                        <td><%= appointment.getAppointment_date() %><br><small><%= appointment.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(appointment) %></small></td>
                         <td><%= customerName %></td>
                         <td><%= technicianName %></td>
                         <td><%= serviceLabel %></td>

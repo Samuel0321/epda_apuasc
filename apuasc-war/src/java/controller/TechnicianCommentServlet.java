@@ -120,15 +120,27 @@ public class TechnicianCommentServlet extends HttpServlet {
                     continue;
                 }
 
-                impacted.setStatus("DELAYED");
-                impacted.setCounter_staff_comment("Your appointment is delayed because the previous repair needs more time. Reception may reassign another technician or contact you with an updated slot.");
+                if ("ASSIGNED".equals(impactedStatus)) {
+                    impacted.setCounter_staff_comment("Inspection may start later because the earlier repair needs more time. Reception should consider another technician before quotation preparation.");
+                } else {
+                    impacted.setStatus("DELAYED");
+                    impacted.setCounter_staff_comment("Your appointment is delayed because the previous repair needs more time. Reception may reassign another technician or contact you with an updated slot.");
+                }
                 appointmentsFacade.edit(impacted);
                 if (impacted.getCustomer_id() != null) {
                     NotificationService.notifyUser(getServletContext(), impacted.getCustomer_id(), "appointment",
-                            "Appointment delayed",
-                            "Your appointment is delayed because the previous repair needs more time. Reception may reassign another technician or update your slot.",
+                            "ASSIGNED".equals(impactedStatus) ? "Inspection schedule affected" : "Appointment delayed",
+                            "ASSIGNED".equals(impactedStatus)
+                                    ? "Your inspection may start later because the technician is delayed on an earlier repair. Reception may assign another technician before preparing your quotation."
+                                    : "Your appointment is delayed because the previous repair needs more time. Reception may reassign another technician or update your slot.",
                             request.getContextPath() + "/Pages/Customer/MyAppointments.jsp");
                 }
+                NotificationService.notifyUsers(getServletContext(), extractUserIds(userFacade.findByRoles(java.util.Arrays.asList("receptionist"))), "appointment",
+                        "ASSIGNED".equals(impactedStatus) ? "Inspection schedule affected" : "Appointment delayed",
+                        "ASSIGNED".equals(impactedStatus)
+                                ? "Appointment #APT" + impacted.getAppointment_id() + " may need technician reassignment before quotation because an earlier repair is delayed."
+                                : "Appointment #APT" + impacted.getAppointment_id() + " was delayed because the previous repair needs more time.",
+                        request.getContextPath() + "/Pages/Receptionist/Appointments.jsp");
             }
 
             response.sendRedirect(request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp?delayed=1");

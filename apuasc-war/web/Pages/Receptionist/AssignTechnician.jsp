@@ -45,6 +45,10 @@
         if (techIdStr != null && !techIdStr.isEmpty()) {
             Integer technicianId = Integer.parseInt(techIdStr);
             UsersEntity actingReceptionist = session.getAttribute("user") instanceof UsersEntity ? usersFacade.find(((UsersEntity) session.getAttribute("user")).getId()) : null;
+            if (!appointmentsFacade.canReassignTechnician(appointment)) {
+                response.sendRedirect("AssignTechnician.jsp?id=" + appointment.getId() + "&error=ReassignLocked");
+                return;
+            }
             if (appointmentsFacade.isPastAppointmentSlot(appointment.getAppointment_date(), appointment.getAppointment_time())) {
                 response.sendRedirect("AssignTechnician.jsp?id=" + appointment.getId() + "&error=PastDateTime");
                 return;
@@ -283,6 +287,8 @@
                     <%
                         if ("PastDateTime".equals(error)) {
                             out.print("This appointment slot is already in the past, so it cannot be assigned anymore.");
+                        } else if ("ReassignLocked".equals(error)) {
+                            out.print("This appointment already moved beyond technician assignment. Reassignment is no longer allowed after quotation work starts.");
                         } else if ("TechnicianBusy".equals(error)) {
                             out.print("That technician is already busy during this appointment window. Please choose an available technician.");
                         } else {

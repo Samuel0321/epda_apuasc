@@ -275,4 +275,57 @@ public class AppointmentsFacade extends AbstractFacade<Appointments> {
     public String buildDelayedComment(int extraHours, String message) {
         return DELAY_TOKEN_PREFIX + Math.max(1, extraHours) + "] " + (message == null ? "" : message.trim());
     }
+
+    public boolean canCancel(Appointments appointment) {
+        if (appointment == null) {
+            return false;
+        }
+        String status = appointment.getStatus() == null ? "" : appointment.getStatus().trim().toUpperCase();
+        return Arrays.asList("PENDING", "ASSIGNED").contains(status);
+    }
+
+    public LocalTime estimateAppointmentEndTime(Appointments appointment) {
+        if (appointment == null || appointment.getAppointment_time() == null) {
+            return null;
+        }
+        return appointment.getAppointment_time().plusHours(Math.max(1, estimateReservedDurationHours(appointment)));
+    }
+
+    public boolean canReassignTechnician(Appointments appointment) {
+        if (appointment == null) {
+            return false;
+        }
+        String status = appointment.getStatus() == null ? "" : appointment.getStatus().trim().toUpperCase();
+        return Arrays.asList("PENDING", "ASSIGNED").contains(status);
+    }
+
+    public boolean hasEarlierUnfinishedAppointment(Integer technicianId, Appointments appointment) {
+        if (technicianId == null || appointment == null || appointment.getAppointment_id() == null
+                || appointment.getAppointment_date() == null || appointment.getAppointment_time() == null) {
+            return false;
+        }
+
+        List<Appointments> technicianAppointments = findByTechnicianId(technicianId);
+        for (Appointments existing : technicianAppointments) {
+            if (existing == null || existing.getAppointment_id() == null || existing.getAppointment_id().equals(appointment.getAppointment_id())) {
+                continue;
+            }
+            if (existing.getAppointment_date() == null || existing.getAppointment_time() == null) {
+                continue;
+            }
+
+            LocalDateTime existingStart = LocalDateTime.of(existing.getAppointment_date(), existing.getAppointment_time());
+            LocalDateTime currentStart = LocalDateTime.of(appointment.getAppointment_date(), appointment.getAppointment_time());
+            if (!existingStart.isBefore(currentStart)) {
+                continue;
+            }
+
+            String status = existing.getStatus() == null ? "" : existing.getStatus().trim().toUpperCase();
+            if (Arrays.asList("COMPLETED", "UNPAID", "PAID", "CANCELLED").contains(status)) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
 }

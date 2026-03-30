@@ -421,7 +421,7 @@
                         <td><%= customerName %></td>
                         <td><%= serviceName %></td>
                         <td><%= issueText %></td>
-                        <td><%= (appointment.getAppointment_date() == null ? "-" : appointment.getAppointment_date().toString()) %> - <%= (appointment.getAppointment_time() == null ? "-" : appointment.getAppointment_time().toString()) %></td>
+                        <td><%= (appointment.getAppointment_date() == null ? "-" : appointment.getAppointment_date().toString()) %> - <%= (appointment.getAppointment_time() == null ? "-" : appointment.getAppointment_time().toString()) %> to <%= appointmentsFacade.estimateAppointmentEndTime(appointment) == null ? "-" : appointmentsFacade.estimateAppointmentEndTime(appointment).toString() %></td>
                         <td><%= technicianName %></td>
                         <td><span class="badge <%= badgeClass %>"><%= displayReceptionStatus(status) %></span></td>
                         <td><strong><%= displayAmount(appointment.getTotal_amount(), currency) %></strong></td>
@@ -433,7 +433,7 @@
                                 <% if ("WAITING APPROVAL".equals(status)) { %>
                                 <button class="btn-small btn-approve" type="button" disabled>Await Customer</button>
                                 <% } %>
-                                <% if ("DELAYED".equals(status) && appointment.getTechnician_id() != null) { %>
+                                <% if (appointmentsFacade.canReassignTechnician(appointment) && appointment.getTechnician_id() != null) { %>
                                 <button class="btn-small btn-assign" data-id="<%= appointmentId %>" onclick="assignTechnicianFromButton(this)">Reassign Tech</button>
                                 <% } %>
                                 <% if ("COMPLETED".equals(status) || "UNPAID".equals(status)) { %>
@@ -442,7 +442,7 @@
                                     <button type="submit" class="btn-small btn-collect">Paid</button>
                                 </form>
                                 <% } %>
-                                <% if (Arrays.asList("PENDING","ASSIGNED","WAITING APPROVAL","ACCEPTED","DELAYED","REJECTED").contains(status)) { %>
+                                <% if (appointmentsFacade.canCancel(appointment)) { %>
                                 <form method="post" action="<%= request.getContextPath() %>/AppointmentCancellationServlet" style="display:inline;">
                                     <input type="hidden" name="appointmentId" value="<%= appointmentId %>">
                                     <button type="submit" class="btn-small" style="background:#fecaca;color:#991b1b;">Cancel</button>

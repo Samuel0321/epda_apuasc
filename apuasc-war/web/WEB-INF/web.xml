@@ -96,6 +96,10 @@
         <servlet-name>AppointmentCancellationServlet</servlet-name>
         <servlet-class>controller.AppointmentCancellationServlet</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>CustomerInvoiceDownloadServlet</servlet-name>
+        <servlet-class>controller.CustomerInvoiceDownloadServlet</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>loginServlet</servlet-name>
         <url-pattern>/loginServlet</url-pattern>
@@ -191,5 +195,9 @@
     <servlet-mapping>
         <servlet-name>AppointmentCancellationServlet</servlet-name>
         <url-pattern>/AppointmentCancellationServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>CustomerInvoiceDownloadServlet</servlet-name>
+        <url-pattern>/CustomerInvoiceDownloadServlet</url-pattern>
     </servlet-mapping>
 </web-app>

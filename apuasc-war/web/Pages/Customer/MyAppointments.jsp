@@ -164,7 +164,7 @@
                     </div>
                     <div class="task-body">
                         <div class="task-meta">
-                            <strong>Time:</strong> <%= apt.getAppointment_time() %><br>
+                            <strong>Time:</strong> <%= apt.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(apt) %><br>
                             <strong>Services:</strong> <%= aptServices %><br>
                             <strong>Technician:</strong> <%= tName %>
                         </div>
@@ -203,21 +203,21 @@
                                 </div>
                             <% } %>
                             <% if ("UNPAID".equals(status)) { %>
-                                <button class="task-btn btn-note" onclick="alert('Please find receptionist at the counter for payment.')">Find Receptionist For Payment</button>
+                                <div class="status-box" style="color:#92400e;">Please find receptionist at the counter for payment.</div>
                             <% } %>
                             <% if ("COMPLETED".equals(status)) { %>
-                                <button class="task-btn btn-note" onclick="alert('Repair is completed. Please find receptionist at the counter for payment.')">Find Receptionist For Payment</button>
+                                <div class="status-box" style="color:#92400e;">Repair is completed. Please find receptionist at the counter for payment.</div>
                             <% } %>
                             <% if ("PAID".equals(status) && (apt.getCustomer_feedback() == null || apt.getCustomer_feedback().trim().isEmpty())) { %>
                                 <button class="task-btn btn-primary" type="button" onclick="openFeedbackModal('<%= apt.getAppointment_id() %>', '<%= escapeForJs(aptServices) %>')">Provide Feedback</button>
                             <% } %>
-                            <% if (Arrays.asList("PENDING","ASSIGNED","WAITING APPROVAL","ACCEPTED","DELAYED","REJECTED").contains(status)) { %>
+                            <% if (appointmentsFacade.canCancel(apt)) { %>
                                 <form action="<%= request.getContextPath() %>/AppointmentCancellationServlet" method="POST" style="margin:0;">
                                     <input type="hidden" name="appointmentId" value="<%= apt.getAppointment_id() %>">
                                     <button type="submit" class="task-btn" style="background:#ef4444;color:white;">Cancel Appointment</button>
                                 </form>
                             <% } %>
-                            <button class="task-btn btn-secondary" type="button" onclick="openAppointmentModal('#APT<%= String.format("%03d", apt.getAppointment_id()) %>', '<%= apt.getAppointment_date() %>', '<%= apt.getAppointment_time() %>', '<%= escapeForJs(aptServices) %>', '<%= escapeForJs(tName) %>', '<%= escapeForJs(displayCustomerStatus(status)) %>', '<%= escapeForJs(displayAmount(apt.getTotal_amount())) %>', '<%= escapeForJs(apt.getCustomer_notes()) %>', '<%= escapeForJs(sanitizeComment(apt.getCounter_staff_comment())) %>', '<%= escapeForJs(apt.getTechnician_notes()) %>', '<%= escapeForJs(apt.getCustomer_feedback()) %>')">View Details</button>
+                            <button class="task-btn btn-secondary" type="button" onclick="openAppointmentModal('#APT<%= String.format("%03d", apt.getAppointment_id()) %>', '<%= apt.getAppointment_date() %>', '<%= apt.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(apt) %>', '<%= escapeForJs(aptServices) %>', '<%= escapeForJs(tName) %>', '<%= escapeForJs(displayCustomerStatus(status)) %>', '<%= escapeForJs(displayAmount(apt.getTotal_amount())) %>', '<%= escapeForJs(apt.getCustomer_notes()) %>', '<%= escapeForJs(sanitizeComment(apt.getCounter_staff_comment())) %>', '<%= escapeForJs(apt.getTechnician_notes()) %>', '<%= escapeForJs(apt.getCustomer_feedback()) %>')">View Details</button>
                         </div>
                     </div>
                 </div>

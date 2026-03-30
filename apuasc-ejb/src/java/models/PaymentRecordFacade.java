@@ -2,6 +2,7 @@ package models;
 
 import jakarta.ejb.Stateless;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.util.List;
@@ -52,5 +53,17 @@ public class PaymentRecordFacade extends AbstractFacade<PaymentRecord> {
                 BigDecimal.class
         ).getSingleResult();
         return total == null ? BigDecimal.ZERO : total;
+    }
+
+    public PaymentRecord findByInvoiceNumber(String invoiceNumber) {
+        try {
+            return em.createQuery(
+                    "SELECT p FROM PaymentRecord p WHERE p.invoice_number = :invoiceNumber",
+                    PaymentRecord.class
+            ).setParameter("invoiceNumber", invoiceNumber)
+             .getSingleResult();
+        } catch (NoResultException ex) {
+            return null;
+        }
     }
 }
