@@ -62,7 +62,8 @@ public class AppointmentCancellationServlet extends HttpServlet {
 
         appointment.setStatus("CANCELLED");
         String actor = isCustomer ? "Customer cancelled the appointment." : "Receptionist cancelled the appointment.";
-        appointment.setCounter_staff_comment(actor);
+        appointment.setCounter_staff_comment(appointmentsFacade.preserveSchedulingMetadata(
+                appointment.getCounter_staff_comment(), actor));
         appointmentsFacade.edit(appointment);
 
         notifyCancellation(request, appointment, currentUser, isCustomer);

@@ -10,12 +10,8 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import models.AppointmentService;
-import models.AppointmentServiceFacade;
 import models.Appointments;
 import models.AppointmentsFacade;
-import models.ServiceEntity;
-import models.ServiceEntityFacade;
 import models.UsersEntity;
 import models.UsersEntityFacade;
 import utils.NotificationService;
@@ -24,12 +20,6 @@ public class ReceptionistAppointmentServlet extends HttpServlet {
 
     @EJB
     private AppointmentsFacade appointmentsFacade;
-
-    @EJB
-    private AppointmentServiceFacade appointmentServiceFacade;
-
-    @EJB
-    private ServiceEntityFacade serviceFacade;
 
     @EJB
     private UsersEntityFacade userFacade;
@@ -51,13 +41,11 @@ public class ReceptionistAppointmentServlet extends HttpServlet {
 
         Integer customerId = parseInteger(request.getParameter("customer"));
         Integer technicianId = parseInteger(request.getParameter("technician"));
+        String bookingType = trim(request.getParameter("serviceType")).toLowerCase();
 
         UsersEntity customer = customerId == null ? null : userFacade.find(customerId);
-        String bookingType = trim(request.getParameter("serviceType")).toLowerCase();
-        ServiceEntity service = ("minor".equals(bookingType) || "major".equals(bookingType))
-                ? serviceFacade.findOrCreateBookingType(bookingType) : null;
 
-        if (customer == null || service == null || !"customer".equalsIgnoreCase(trim(customer.getRole()))) {
+        if (customer == null || !isValidBookingType(bookingType) || !"customer".equalsIgnoreCase(trim(customer.getRole()))) {
             response.sendRedirect(request.getContextPath() + "/Pages/Receptionist/NewAppointment.jsp?error=InvalidSelection");
             return;
         }
@@ -92,7 +80,7 @@ public class ReceptionistAppointmentServlet extends HttpServlet {
                 return;
             }
 
-            int requestedDurationHours = appointmentServiceFacade.estimateServiceDurationHours(service.getService_name());
+            int requestedDurationHours = appointmentsFacade.estimateBookingTypeDurationHours(bookingType);
             if (appointmentsFacade.hasTechnicianConflict(technicianId, appointmentDate, appointmentTime, requestedDurationHours, null)) {
                 response.sendRedirect(request.getContextPath() + "/Pages/Receptionist/NewAppointment.jsp?error=TechnicianBusy");
                 return;
@@ -109,30 +97,26 @@ public class ReceptionistAppointmentServlet extends HttpServlet {
         appointment.setCustomer_notes(trim(request.getParameter("notes")));
         appointment.setTechnician_notes("");
         appointment.setCustomer_feedback("");
-        appointment.setCounter_staff_comment(technicianId == null
-                ? "Appointment created by receptionist. Technician assignment is still pending."
-                : "Appointment created by receptionist and technician assignment was confirmed.");
+        appointment.setCounter_staff_comment(appointmentsFacade.buildInitialBookingComment(bookingType,
+                technicianId == null
+                        ? "Appointment created by receptionist. Technician assignment is still pending."
+                        : "Appointment created by receptionist and technician assignment was confirmed."));
         appointmentsFacade.create(appointment);
 
-        AppointmentService appointmentService = new AppointmentService();
-        appointmentService.setAppointment_id(appointment.getAppointment_id());
-        appointmentService.setService_id(service.getId());
-        appointmentService.setService_price(service.getPrice());
-        appointmentServiceFacade.create(appointmentService);
-
         String slotText = appointmentDate + " " + appointmentTime;
+        String bookingLabel = appointmentsFacade.getBookingTypeLabel(appointment.getCounter_staff_comment());
         NotificationService.notifyUser(getServletContext(), currentUser.getId(), "appointment",
                 "Appointment created",
-                "You created " + service.getService_name() + " for " + customer.getName() + " at " + slotText + ".",
+                "You created " + bookingLabel + " for " + customer.getName() + " at " + slotText + ".",
                 request.getContextPath() + "/Pages/Receptionist/Appointments.jsp");
         NotificationService.notifyUser(getServletContext(), customer.getId(), "appointment",
                 "Appointment confirmation",
-                "Reception scheduled your " + service.getService_name() + " appointment for " + slotText + ".",
+                "Reception scheduled your " + bookingLabel + " appointment for " + slotText + ".",
                 request.getContextPath() + "/Pages/Customer/MyAppointments.jsp");
         if (technicianId != null) {
             NotificationService.notifyUser(getServletContext(), technicianId, "appointment",
                     "New technician assignment",
-                    "You were assigned to " + customer.getName() + "'s " + service.getService_name() + " appointment at " + slotText + ".",
+                    "You were assigned to " + customer.getName() + "'s " + bookingLabel + " appointment at " + slotText + ".",
                     request.getContextPath() + "/Pages/Technician/AssignedTasks.jsp");
         }
 
@@ -170,6 +154,10 @@ public class ReceptionistAppointmentServlet extends HttpServlet {
 
     private String trim(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private boolean isValidBookingType(String bookingType) {
+        return "minor".equals(bookingType) || "major".equals(bookingType);
     }
 
     private boolean isQuarterHourSlot(LocalTime value) {

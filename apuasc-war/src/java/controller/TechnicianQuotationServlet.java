@@ -94,7 +94,9 @@ public class TechnicianQuotationServlet extends HttpServlet {
         appointment.setTechnician_notes(trim(request.getParameter("technicianNotes")));
         appointment.setTotal_amount(total);
         appointment.setStatus("WAITING APPROVAL");
-        appointment.setCounter_staff_comment("Technician prepared the quotation. Awaiting customer decision before repair work begins.");
+        appointment.setCounter_staff_comment(appointmentsFacade.preserveSchedulingMetadata(
+                appointment.getCounter_staff_comment(),
+                "Technician prepared the quotation. Awaiting customer decision before repair work begins."));
         appointmentsFacade.edit(appointment);
 
         UsersEntity customer = appointment.getCustomer_id() == null ? null : userFacade.find(appointment.getCustomer_id());

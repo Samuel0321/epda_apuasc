@@ -27,7 +27,7 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>User Registration - AutoFix Pro</title>
+        <title>User Registration - APU ASC</title>
         <style>
             * {
                 box-sizing: border-box;
@@ -61,6 +61,17 @@
                 color: #1e293b;
                 margin: 0 0 10px 0;
                 font-size: 32px;
+            }
+
+            .brand-logo {
+                width: 68px;
+                height: 68px;
+                object-fit: contain;
+                border-radius: 14px;
+                background: #ffffff;
+                border: 1px solid #dbeafe;
+                padding: 6px;
+                margin-bottom: 12px;
             }
             
             .page-header p {
@@ -255,7 +266,8 @@
     <body>
         <div class="container">
             <div class="page-header">
-                <h1>🔧 AutoFix Pro</h1>
+                <img src="Icon/APUASC.png" alt="APU ASC Logo" class="brand-logo">
+                <h1>APU ASC</h1>
                 <p><%= managerRegistration ? "Register Staff Account" : "Create Your Account" %></p>
             </div>
             
@@ -447,3 +459,4 @@
         </script>
     </body>
 </html>
+

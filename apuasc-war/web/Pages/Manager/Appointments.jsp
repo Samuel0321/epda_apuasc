@@ -152,7 +152,9 @@
                                     serviceNames.add(service.getService_name());
                                 }
                             }
-                            String serviceLabel = serviceNames.isEmpty() ? "Appointment Booking" : String.join(", ", serviceNames);
+                            String serviceLabel = serviceNames.isEmpty()
+                                    ? appointmentsFacade.getBookingTypeLabel(appointment.getCounter_staff_comment())
+                                    : String.join(", ", serviceNames);
                             String badgeClass = "status-pending";
                             if ("ASSIGNED".equals(status)) badgeClass = "status-assigned";
                             else if ("WAITING APPROVAL".equals(status)) badgeClass = "status-waiting-approval";
@@ -173,7 +175,7 @@
                         data-status-label="<%= escapeForJs(status) %>"
                         data-customer-note="<%= escapeForJs(appointment.getCustomer_notes()) %>"
                         data-tech-note="<%= escapeForJs(appointment.getTechnician_notes()) %>"
-                        data-staff-comment="<%= escapeForJs(appointment.getCounter_staff_comment()) %>"
+                        data-staff-comment="<%= escapeForJs(appointmentsFacade.stripSchedulingMetadata(appointment.getCounter_staff_comment())) %>"
                         data-feedback="<%= escapeForJs(appointment.getCustomer_feedback()) %>">
                         <td>#APT<%= String.format("%03d", appointment.getAppointment_id()) %></td>
                         <td><%= appointment.getAppointment_date() %><br><small><%= appointment.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(appointment) %></small></td>

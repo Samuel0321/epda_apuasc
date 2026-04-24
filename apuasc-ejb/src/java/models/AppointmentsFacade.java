@@ -26,6 +26,9 @@ import java.util.List;
 public class AppointmentsFacade extends AbstractFacade<Appointments> {
 
     private static final String DELAY_TOKEN_PREFIX = "[DELAY_HOURS=";
+    private static final String BOOKING_TYPE_TOKEN_PREFIX = "[BOOKING_TYPE=";
+    private static final int MINOR_BOOKING_HOURS = 1;
+    private static final int MAJOR_BOOKING_HOURS = 2;
 
     @PersistenceContext(unitName = "apuasc-ejbPU")
     private EntityManager em;
@@ -234,46 +237,127 @@ public class AppointmentsFacade extends AbstractFacade<Appointments> {
             return 1;
         }
         int baseHours = appointmentServiceFacade.estimateAppointmentDurationHours(appointment.getAppointment_id());
+        if (baseHours <= 0) {
+            baseHours = estimateBookingTypeDurationHours(extractBookingType(appointment.getCounter_staff_comment()));
+        }
         int delayHours = extractDelayHours(appointment.getCounter_staff_comment());
         return Math.max(1, baseHours + delayHours);
     }
 
     public int extractDelayHours(String comment) {
-        if (comment == null) {
-            return 0;
-        }
-        String trimmed = comment.trim();
-        if (!trimmed.startsWith(DELAY_TOKEN_PREFIX)) {
-            return 0;
-        }
-        int closingIndex = trimmed.indexOf(']');
-        if (closingIndex <= DELAY_TOKEN_PREFIX.length()) {
+        String tokenValue = extractSchedulingToken(comment, DELAY_TOKEN_PREFIX);
+        if (tokenValue.isEmpty()) {
             return 0;
         }
         try {
-            return Math.max(0, Integer.parseInt(trimmed.substring(DELAY_TOKEN_PREFIX.length(), closingIndex)));
+            return Math.max(0, Integer.parseInt(tokenValue));
         } catch (NumberFormatException ex) {
             return 0;
         }
+    }
+
+    public String extractBookingType(String comment) {
+        return normalizeBookingType(extractSchedulingToken(comment, BOOKING_TYPE_TOKEN_PREFIX));
+    }
+
+    public int estimateBookingTypeDurationHours(String bookingType) {
+        String normalized = normalizeBookingType(bookingType);
+        if ("major".equals(normalized)) {
+            return MAJOR_BOOKING_HOURS;
+        }
+        return MINOR_BOOKING_HOURS;
+    }
+
+    public String getBookingTypeLabel(String comment) {
+        String bookingType = extractBookingType(comment);
+        if ("major".equals(bookingType)) {
+            return "Major Service";
+        }
+        if ("minor".equals(bookingType)) {
+            return "Minor Service";
+        }
+        return "Appointment Booking";
+    }
+
+    public String buildInitialBookingComment(String bookingType, String message) {
+        return buildSchedulingComment(bookingType, 0, message);
     }
 
     public String stripSchedulingMetadata(String value) {
         if (value == null) {
             return "";
         }
-        String trimmed = value.trim();
-        if (trimmed.startsWith(DELAY_TOKEN_PREFIX)) {
-            int closingIndex = trimmed.indexOf(']');
-            if (closingIndex >= 0 && closingIndex + 1 < trimmed.length()) {
-                return trimmed.substring(closingIndex + 1).trim();
-            }
-            return "";
-        }
-        return trimmed;
+        return stripLeadingSchedulingTokens(value.trim());
     }
 
-    public String buildDelayedComment(int extraHours, String message) {
-        return DELAY_TOKEN_PREFIX + Math.max(1, extraHours) + "] " + (message == null ? "" : message.trim());
+    public String preserveSchedulingMetadata(String existingComment, String message) {
+        return buildSchedulingComment(extractBookingType(existingComment), extractDelayHours(existingComment), message);
+    }
+
+    public String buildDelayedComment(String existingComment, int extraHours, String message) {
+        return buildSchedulingComment(extractBookingType(existingComment), Math.max(1, extraHours), message);
+    }
+
+    private String buildSchedulingComment(String bookingType, int delayHours, String message) {
+        StringBuilder builder = new StringBuilder();
+        String normalizedBookingType = normalizeBookingType(bookingType);
+        if (!normalizedBookingType.isEmpty()) {
+            builder.append(BOOKING_TYPE_TOKEN_PREFIX).append(normalizedBookingType).append(']');
+        }
+        if (delayHours > 0) {
+            builder.append(DELAY_TOKEN_PREFIX).append(delayHours).append(']');
+        }
+        String cleanedMessage = message == null ? "" : message.trim();
+        if (!cleanedMessage.isEmpty()) {
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+            builder.append(cleanedMessage);
+        }
+        return builder.toString();
+    }
+
+    private String extractSchedulingToken(String comment, String tokenPrefix) {
+        if (comment == null || tokenPrefix == null || tokenPrefix.isEmpty()) {
+            return "";
+        }
+        String remaining = comment.trim();
+        while (remaining.startsWith("[")) {
+            int closingIndex = remaining.indexOf(']');
+            if (closingIndex < 0) {
+                break;
+            }
+            String token = remaining.substring(0, closingIndex + 1);
+            if (token.startsWith(tokenPrefix)) {
+                return token.substring(tokenPrefix.length(), token.length() - 1).trim();
+            }
+            remaining = remaining.substring(closingIndex + 1).trim();
+        }
+        return "";
+    }
+
+    private String stripLeadingSchedulingTokens(String value) {
+        String remaining = value == null ? "" : value.trim();
+        while (remaining.startsWith("[")) {
+            int closingIndex = remaining.indexOf(']');
+            if (closingIndex < 0) {
+                break;
+            }
+            String token = remaining.substring(0, closingIndex + 1);
+            if (!token.startsWith(DELAY_TOKEN_PREFIX) && !token.startsWith(BOOKING_TYPE_TOKEN_PREFIX)) {
+                break;
+            }
+            remaining = remaining.substring(closingIndex + 1).trim();
+        }
+        return remaining;
+    }
+
+    private String normalizeBookingType(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase();
+        if ("minor".equals(normalized) || "major".equals(normalized)) {
+            return normalized;
+        }
+        return "";
     }
 
     public boolean canCancel(Appointments appointment) {
@@ -321,7 +405,7 @@ public class AppointmentsFacade extends AbstractFacade<Appointments> {
             }
 
             String status = existing.getStatus() == null ? "" : existing.getStatus().trim().toUpperCase();
-            if (Arrays.asList("COMPLETED", "UNPAID", "PAID", "CANCELLED").contains(status)) {
+            if (Arrays.asList("COMPLETED", "UNPAID", "PAID", "CANCELLED", "REJECTED").contains(status)) {
                 continue;
             }
             return true;

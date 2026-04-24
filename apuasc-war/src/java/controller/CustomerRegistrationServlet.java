@@ -58,7 +58,6 @@ public class CustomerRegistrationServlet extends HttpServlet {
         user.setHome_address(trim(request.getParameter("user_address")));
         user.setRole("customer");
         user.setHave_Manager_access(0);
-        user.setIs_Super_Admin(0);
 
         try {
             userFacade.create(user);

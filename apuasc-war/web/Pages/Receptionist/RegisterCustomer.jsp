@@ -73,6 +73,23 @@
             font-size: 13px;
         }
 
+        .brand-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .brand-inline img {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            border-radius: 10px;
+            border: 1px solid #dbeafe;
+            background: #ffffff;
+            padding: 4px;
+        }
+
         .message {
             margin-bottom: 20px;
             padding: 12px 14px;
@@ -146,7 +163,11 @@
 
         <div class="header-row">
             <div class="header-text">
-                <h1>New Customer Registration</h1>
+                <div class="brand-inline">
+                    <img src="../../Icon/APUASC.png" alt="APU ASC Logo">
+                    <h1>APU ASC</h1>
+                </div>
+                <p>New Customer Registration</p>
                 <p>Create a customer login and store their basic information.</p>
             </div>
         </div>

@@ -36,6 +36,8 @@
             if (s != null) {
                 serviceName = s.getService_name();
             }
+        } else {
+            serviceName = appointmentsFacade.getBookingTypeLabel(appointment.getCounter_staff_comment());
         }
     }
 
@@ -99,11 +101,15 @@
     }
 
     Map<Integer, Boolean> technicianAvailability = new LinkedHashMap<>();
+    List<UsersEntity> availableTechnicians = new java.util.ArrayList<UsersEntity>();
     if (appointment != null) {
         for (UsersEntity tech : technicians) {
             boolean busy = appointmentsFacade.hasTechnicianConflict(tech.getId(), appointment.getAppointment_date(),
                     appointment.getAppointment_time(), requestedDurationHours, appointment.getId());
             technicianAvailability.put(tech.getId(), !busy);
+            if (!busy) {
+                availableTechnicians.add(tech);
+            }
         }
     }
 %>
@@ -341,17 +347,25 @@
                     <label for="technician">Select Technician *</label>
                     <div class="info-box">
                         <strong>Available Technicians:</strong>
-                        Only technicians without overlapping work during this service window can be assigned.
+                        Only technicians who are free for the full reserved window are shown below.
                     </div>
                     
                     <div class="technician-list">
-                        <% for (UsersEntity tech : technicians) { %>
+                        <% if (availableTechnicians.isEmpty()) { %>
+                        <div class="technician-item" style="cursor:default;">
+                            <div class="technician-info">
+                                <div class="technician-name">No technician available</div>
+                                <div class="availability">Choose another time slot or assign later.</div>
+                            </div>
+                        </div>
+                        <% } %>
+                        <% for (UsersEntity tech : availableTechnicians) { %>
                         <div class="technician-item">
                             <div style="display: flex; align-items: center; flex: 1;">
-                                <input type="radio" name="technician" id="tech<%= tech.getId() %>" value="<%= tech.getId() %>" <%= Boolean.TRUE.equals(technicianAvailability.get(tech.getId())) ? "" : "disabled" %> required>
+                                <input type="radio" name="technician" id="tech<%= tech.getId() %>" value="<%= tech.getId() %>" required>
                                 <div class="technician-info">
                                     <div class="technician-name"><%= tech.getName() %></div>
-                                    <div class="availability"><%= Boolean.TRUE.equals(technicianAvailability.get(tech.getId())) ? "Available for this slot" : "Busy during this slot" %></div>
+                                    <div class="availability">Available for this <%= requestedDurationHours %>-hour slot</div>
                                 </div>
                             </div>
                         </div>
@@ -365,7 +379,7 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-submit">Assign Technician</button>
+                    <button type="submit" class="btn-submit" <%= availableTechnicians.isEmpty() ? "disabled" : "" %>>Assign Technician</button>
                     <button type="button" class="btn-cancel" onclick="window.location.href='Appointments.jsp'">Cancel</button>
                 </div>
             </form>

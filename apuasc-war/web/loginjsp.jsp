@@ -14,7 +14,7 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Login | Enterprise System</title>
+    <title>Login | APU ASC</title>
 
     <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -125,30 +125,40 @@
         }
 
         .logo {
-            text-align: center;
-            margin-bottom: 15px;
-            font-weight: bold;
-            font-size: 18px;
-            color: #2a5298;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            color: #1e3c72;
         }
 
-        .demo-box {
-            margin-top: 18px;
-            padding: 12px;
-            border-radius: 8px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            font-size: 12px;
-            color: #475569;
-            line-height: 1.6;
+        .logo img {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            border-radius: 12px;
+            background: #ffffff;
+            padding: 6px;
+            border: 1px solid #dbeafe;
         }
+
+        .logo strong {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: 0.04em;
+        }
+
     </style>
 </head>
 
 <body>
 
     <div class="container">
-        <div class="logo">Enterprise Portal</div>
+        <div class="logo">
+            <img src="Icon/APUASC.png" alt="APU ASC Logo">
+            <strong>APU ASC</strong>
+        </div>
         <div class="title">Sign in to your account</div>
 
         <form action="loginServlet" method="post">
@@ -166,8 +176,7 @@
         </form>
 
         <div class="links">
-            <a href="RegisterServlet">Create account</a>
-            <a href="RegisterServlet">Registration</a>
+            <a href="RegisterServlet">Create new acc</a>
         </div>
 
         <div class="error">
@@ -176,14 +185,6 @@
 
         <div class="success">
             ${param.registered eq '1' ? 'Registration completed. You can log in now.' : ''}
-        </div>
-
-        <div class="demo-box">
-            Demo logins:
-            <br>Customer: `sam@gmail.com` / `123`
-            <br>Receptionist: `pj@gmail.com` / `123`
-            <br>Technician: `wj@tech.com` / `123`
-            <br>Manager: `cj@manager.com` / `123`
         </div>
     </div>
 

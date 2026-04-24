@@ -64,27 +64,13 @@ public class AppointmentServiceFacade extends AbstractFacade<AppointmentService>
 
     public int estimateAppointmentDurationHours(Integer appointmentId) {
         if (appointmentId == null) {
-            return 1;
+            return 0;
         }
-
-        List<String> serviceNames = em.createQuery(
-                "SELECT s.service_name FROM AppointmentService aps, ServiceEntity s "
-                + "WHERE aps.appointment_id = :appointmentId AND aps.service_id = s.id",
-                String.class
-        ).setParameter("appointmentId", appointmentId).getResultList();
-
-        int durationHours = 1;
-        for (String serviceName : serviceNames) {
-            durationHours = Math.max(durationHours, estimateServiceDurationHours(serviceName));
-        }
-        return durationHours;
-    }
-
-    public int estimateServiceDurationHours(String serviceName) {
-        String normalized = serviceName == null ? "" : serviceName.trim().toLowerCase();
-        if (normalized.contains("major")) {
-            return 3;
-        }
-        return 1;
+        Long count = em.createQuery(
+                "SELECT COUNT(aps) FROM AppointmentService aps WHERE aps.appointment_id = :appointmentId",
+                Long.class
+        ).setParameter("appointmentId", appointmentId)
+         .getSingleResult();
+        return count != null && count > 0 ? 1 : 0;
     }
 }

@@ -87,14 +87,15 @@ public class ReceptionistPaymentServlet extends HttpServlet {
         appointmentsFacade.edit(appointment);
 
         PaymentRecord paymentRecord = new PaymentRecord();
+        paymentRecord.setAppointment_id(appointment.getAppointment_id());
+        paymentRecord.setUser_id(appointment.getCustomer_id());
         paymentRecord.setInvoice_number("INV-APT" + appointment.getAppointment_id());
         paymentRecord.setReceipt_number("RCPT-" + appointment.getAppointment_id() + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm")));
-        paymentRecord.setCustomer_name(resolveCustomerName(appointment.getCustomer_id()));
         paymentRecord.setService_name(resolveServiceNames(appointment.getAppointment_id()));
         paymentRecord.setAmount(appointment.getTotal_amount() == null ? BigDecimal.ZERO : appointment.getTotal_amount());
         paymentRecord.setStatus("paid");
         paymentRecord.setPayment_date(LocalDateTime.now().toLocalDate());
-        paymentRecord.setReceived_by(operatorName);
+        paymentRecord.setReceived_by_user_id(currentUser.getId());
         paymentRecordFacade.create(paymentRecord);
 
         NotificationService.notifyUser(getServletContext(), currentUser.getId(), "payment",
@@ -125,14 +126,6 @@ public class ReceptionistPaymentServlet extends HttpServlet {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim().toUpperCase();
-    }
-
-    private String resolveCustomerName(Integer customerId) {
-        UsersEntity customer = customerId == null ? null : userFacade.find(customerId);
-        if (customer == null || customer.getName() == null || customer.getName().trim().isEmpty()) {
-            return "Customer";
-        }
-        return customer.getName().trim();
     }
 
     private String resolveServiceNames(Integer appointmentId) {

@@ -72,7 +72,6 @@ public class RegisterServlet extends HttpServlet {
         user.setHome_address(trim(request.getParameter("user_address")));
         user.setRole(role);
         user.setHave_Manager_access(resolveManagerAccess(role, currentUser));
-        user.setIs_Super_Admin(resolveSuperAdmin(role, currentUser));
 
         try {
             userFacade.create(user);
@@ -156,10 +155,6 @@ public class RegisterServlet extends HttpServlet {
     }
 
     private Integer resolveManagerAccess(String role, UsersEntity currentUser) {
-        return 0;
-    }
-
-    private Integer resolveSuperAdmin(String role, UsersEntity currentUser) {
         return 0;
     }
 

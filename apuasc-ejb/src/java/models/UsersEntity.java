@@ -33,9 +33,8 @@ public class UsersEntity implements Serializable {
     private String home_address;
     private String role;
     private Integer Have_Manager_access;
-    private Integer Is_Super_Admin;
 
-    public UsersEntity(Integer id, String name, String password, String gender, Integer is_malaysian, String origin_country,Integer country_code, String phone_number, String IC_number_passportnumber, String email, String home_address, String role, Integer Have_Manager_access, Integer Is_Super_Admin) {
+    public UsersEntity(Integer id, String name, String password, String gender, Integer is_malaysian, String origin_country,Integer country_code, String phone_number, String IC_number_passportnumber, String email, String home_address, String role, Integer Have_Manager_access) {
         this.id = id;
         this.name = name;
         this.password = password;
@@ -49,7 +48,6 @@ public class UsersEntity implements Serializable {
         this.home_address = home_address;
         this.role = role;
         this.Have_Manager_access = Have_Manager_access;
-        this.Is_Super_Admin = Is_Super_Admin;
     }
 
     public Integer getCountry_code() {
@@ -147,15 +145,6 @@ public class UsersEntity implements Serializable {
     public void setHave_Manager_access(Integer Have_Manager_access) {
         this.Have_Manager_access = Have_Manager_access;
     }
-
-    public Integer getIs_Super_Admin() {
-        return Is_Super_Admin;
-    }
-
-    public void setIs_Super_Admin(Integer Is_Super_Admin) {
-        this.Is_Super_Admin = Is_Super_Admin;
-    }
-
 
     public UsersEntity() {
     }

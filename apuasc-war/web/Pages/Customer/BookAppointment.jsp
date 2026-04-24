@@ -108,12 +108,12 @@
                     <label for="serviceType">Service Type *</label>
                     <select id="serviceType" name="serviceType" required>
                         <option value="">Select Service Type</option>
-                        <option value="minor">Minor Service (Est. 1h)</option>
-                        <option value="major">Major Service (Est. 3h)</option>
+                        <option value="minor">Minor Service</option>
+                        <option value="major">Major Service</option>
                     </select>
                 </div>
                 <div class="info-box">
-                    Booking only uses two appointment types: Minor Service for a 1-hour slot, or Major Service for a 3-hour slot. Detailed quoted services are added later by the technician.
+                    Booking only uses two appointment types for the initial inspection. Detailed quoted services are added later by the technician.
                 </div>
 
                 <div class="form-group">

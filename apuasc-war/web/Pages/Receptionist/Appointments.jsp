@@ -387,7 +387,7 @@
                             }
 
                             List<AppointmentService> links = appointmentServiceFacade.findByAppointmentId(appointmentId);
-                            String serviceName = "General Service";
+                            String serviceName = appointmentsFacade.getBookingTypeLabel(appointment.getCounter_staff_comment());
                             if (links != null && !links.isEmpty()) {
                                 Integer serviceId = links.get(0).getService_id();
                                 ServiceEntity service = serviceId == null ? null : serviceEntityFacade.find(serviceId);

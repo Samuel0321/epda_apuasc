@@ -206,13 +206,13 @@
                     <label for="serviceType">Service Type *</label>
                     <select id="serviceType" name="serviceType" required>
                         <option value="">Select Service</option>
-                        <option value="minor">Minor Service (Est. 1h)</option>
-                        <option value="major">Major Service (Est. 3h)</option>
+                        <option value="minor">Minor Service</option>
+                        <option value="major">Major Service</option>
                     </select>
                 </div>
 
                 <div class="info-box">
-                    Appointment type is fixed here: Minor Service reserves 1 hour, and Major Service reserves 3 hours for technician scheduling.
+                    Minor service reserves 1 hour. Major service reserves 2 hours. This type is only used for scheduling before the technician prepares the final quotation.
                 </div>
 
                 <div class="form-group">
@@ -223,7 +223,7 @@
                         <option value="<%= tech.getId() %>"><%= tech.getName() %></option>
                         <% } %>
                     </select>
-                    <div class="availability" id="technicianAvailabilityMessage">Minor service reserves 1 hour. Major service reserves 3 hours. Busy technicians are hidden when their slot overlaps.</div>
+                    <div class="availability" id="technicianAvailabilityMessage">Technicians are filtered using the selected service type duration. Busy technicians are hidden automatically.</div>
                     <textarea id="notes" name="notes" rows="4" placeholder="Add any special requests or notes..."></textarea>
                 </div>
 
@@ -347,7 +347,7 @@
         }
 
         function getRequestedDurationHours() {
-            return serviceTypeInput.value === "major" ? 3 : 1;
+            return serviceTypeInput.value === "major" ? 2 : 1;
         }
 
         function resetTechnicianVisibility() {
@@ -366,7 +366,7 @@
             resetTechnicianVisibility();
 
             if (!dateInput.value || !timeInput.value || !serviceTypeInput.value) {
-                technicianAvailabilityMessage.textContent = "Minor service reserves 1 hour. Major service reserves 3 hours. Busy technicians are hidden when their slot overlaps.";
+                technicianAvailabilityMessage.textContent = "Choose date, time, and service type to filter technicians by availability.";
                 return;
             }
 
@@ -403,7 +403,7 @@
             if (availableCount === 0) {
                 technicianAvailabilityMessage.textContent = "No technician is free for this service window. Please choose another time or leave technician assignment empty for now.";
             } else {
-                technicianAvailabilityMessage.textContent = availableCount + " technician(s) available for this " + getRequestedDurationHours() + "-hour slot. Busy technicians are hidden automatically.";
+                technicianAvailabilityMessage.textContent = availableCount + " technician(s) available for this " + getRequestedDurationHours() + "-hour service window. Busy technicians are hidden automatically.";
             }
         }
 

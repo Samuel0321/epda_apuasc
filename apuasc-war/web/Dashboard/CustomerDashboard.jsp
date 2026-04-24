@@ -33,7 +33,8 @@
                 names.add(service.getService_name());
             }
         }
-        serviceNamesByAppointment.put(appointment.getAppointment_id(), names.isEmpty() ? "Service Request" : String.join(", ", names));
+        serviceNamesByAppointment.put(appointment.getAppointment_id(),
+                names.isEmpty() ? appointmentsFacade.getBookingTypeLabel(appointment.getCounter_staff_comment()) : String.join(", ", names));
     }
 %>
 <!DOCTYPE html>

@@ -1,8 +1,6 @@
 <%@ page import="models.UsersEntity" %>
 
 <div class="sidebar">
-    <div class="nav-title">Navigation</div>
-
     <%
         String currentURI = request.getRequestURI();
         String contextPath = request.getContextPath();
@@ -46,7 +44,11 @@
         }
     %>
 
-    <h2 onclick="window.location.href='<%= homePath %>'" style="cursor: pointer;">AutoFix Pro</h2>
+    <div class="sidebar-brand" onclick="window.location.href='<%= homePath %>'" style="cursor: pointer;">
+        <img src="<%= contextPath %>/Icon/APUASC.png" alt="APU ASC Logo" class="sidebar-logo">
+        <h2>APU ASC</h2>
+    </div>
+    <div class="nav-title">Navigation</div>
 
     <% if (role.equals("receptionist")) { %>
         <a href="<%= contextPath %>/Dashboard/ReceptionistDashboard.jsp" class="nav-item <%= currentURI.contains("ReceptionistDashboard") ? "active" : "" %>">Dashboard</a>

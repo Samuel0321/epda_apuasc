@@ -10,12 +10,8 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import models.AppointmentService;
-import models.AppointmentServiceFacade;
 import models.Appointments;
 import models.AppointmentsFacade;
-import models.ServiceEntity;
-import models.ServiceEntityFacade;
 import models.UsersEntity;
 import models.UsersEntityFacade;
 import utils.NotificationService;
@@ -24,12 +20,6 @@ public class CustomerBookingServlet extends HttpServlet {
 
     @EJB
     private AppointmentsFacade appointmentsFacade;
-
-    @EJB
-    private AppointmentServiceFacade appointmentServiceFacade;
-
-    @EJB
-    private ServiceEntityFacade serviceFacade;
 
     @EJB
     private UsersEntityFacade userFacade;
@@ -52,12 +42,6 @@ public class CustomerBookingServlet extends HttpServlet {
 
         String bookingType = trim(request.getParameter("serviceType")).toLowerCase();
         if (!"minor".equals(bookingType) && !"major".equals(bookingType)) {
-            response.sendRedirect(request.getContextPath() + "/Pages/Customer/BookAppointment.jsp?error=ServiceRequired");
-            return;
-        }
-
-        ServiceEntity service = serviceFacade.findOrCreateBookingType(bookingType);
-        if (service == null) {
             response.sendRedirect(request.getContextPath() + "/Pages/Customer/BookAppointment.jsp?error=ServiceRequired");
             return;
         }
@@ -96,24 +80,20 @@ public class CustomerBookingServlet extends HttpServlet {
         appointment.setCustomer_notes(trim(request.getParameter("notes")));
         appointment.setTechnician_notes("");
         appointment.setCustomer_feedback("");
-        appointment.setCounter_staff_comment("Booking received. Technician inspection and quotation will be prepared after assignment.");
+        appointment.setCounter_staff_comment(appointmentsFacade.buildInitialBookingComment(bookingType,
+                "Booking received. Technician inspection and quotation will be prepared after assignment."));
         appointmentsFacade.create(appointment);
-
-        AppointmentService appointmentService = new AppointmentService();
-        appointmentService.setAppointment_id(appointment.getAppointment_id());
-        appointmentService.setService_id(service.getId());
-        appointmentService.setService_price(service.getPrice());
-        appointmentServiceFacade.create(appointmentService);
 
         String appointmentLink = request.getContextPath() + "/Pages/Customer/MyAppointments.jsp";
         String slotText = appointmentDate + " " + appointmentTime;
+        String bookingLabel = appointmentsFacade.getBookingTypeLabel(appointment.getCounter_staff_comment());
         NotificationService.notifyUser(getServletContext(), currentUser.getId(), "appointment",
                 "Appointment booked successfully",
-                "Your " + service.getService_name() + " appointment was received for " + slotText + ". Reception will review it shortly.",
+                "Your " + bookingLabel + " appointment was received for " + slotText + ". Reception will review it shortly.",
                 appointmentLink);
         NotificationService.notifyUsers(getServletContext(), extractUserIds(userFacade.findByRoles(java.util.Arrays.asList("receptionist"))), "appointment",
                 "New customer appointment received",
-                currentUser.getName() + " booked " + service.getService_name() + " for " + slotText + ".",
+                currentUser.getName() + " booked " + bookingLabel + " for " + slotText + ".",
                 request.getContextPath() + "/Pages/Receptionist/Appointments.jsp");
 
         response.sendRedirect(request.getContextPath() + "/Pages/Customer/MyAppointments.jsp?booked=1");

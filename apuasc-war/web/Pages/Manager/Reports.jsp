@@ -188,7 +188,6 @@
     List<Object[]> topServices;
     String averagePaidTicket;
     long feedbackCount;
-
     if (request.getAttribute("totalStaff") != null) {
         totalStaff = (Long) request.getAttribute("totalStaff");
         totalCustomers = (Long) request.getAttribute("totalCustomers");
@@ -260,6 +259,14 @@
         long value = row[1] instanceof Number ? ((Number) row[1]).longValue() : 0L;
         if (value > maxServiceUsage) {
             maxServiceUsage = value;
+        }
+    }
+
+    UsersEntityFacade reportUserFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+    Map<Integer, String> userNameById = new HashMap<Integer, String>();
+    for (UsersEntity user : reportUserFacade.findAll()) {
+        if (user != null && user.getId() != null) {
+            userNameById.put(user.getId(), user.getName() == null ? ("User #" + user.getId()) : user.getName().trim());
         }
     }
 %>
@@ -745,10 +752,11 @@
                         }
                         paymentShown++;
                         String statusClass = "paid".equalsIgnoreCase(payment.getStatus()) ? "status-paid" : "status-pending";
+                        String customerText = payment.getUser_id() == null ? "-" : userNameById.getOrDefault(payment.getUser_id(), "User #" + payment.getUser_id());
                     %>
                     <tr>
                         <td><%= payment.getInvoice_number() %></td>
-                        <td><%= payment.getCustomer_name() %></td>
+                        <td><%= customerText %></td>
                         <td><%= payment.getService_name() %></td>
                         <td><%= currency.format(payment.getAmount()) %></td>
                         <td><span class="status-pill <%= statusClass %>"><%= payment.getStatus() %></span></td>

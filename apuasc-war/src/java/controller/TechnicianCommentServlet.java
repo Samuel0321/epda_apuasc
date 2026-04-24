@@ -59,7 +59,9 @@ public class TechnicianCommentServlet extends HttpServlet {
             }
 
             appointment.setStatus("COMPLETED");
-            appointment.setCounter_staff_comment("Repair work completed. Please find receptionist at the counter for payment and vehicle collection.");
+            appointment.setCounter_staff_comment(appointmentsFacade.preserveSchedulingMetadata(
+                    appointment.getCounter_staff_comment(),
+                    "Repair work completed. Please find receptionist at the counter for payment and vehicle collection."));
             appointmentsFacade.edit(appointment);
             notifyRelevantParties(request, appointment, currentUser,
                     "Repair completed",
@@ -83,13 +85,16 @@ public class TechnicianCommentServlet extends HttpServlet {
                 return;
             }
 
-            int baseDurationHours = appointmentServiceFacade.estimateAppointmentDurationHours(appointment.getAppointment_id());
+            int baseDurationHours = appointmentsFacade.estimateReservedDurationHours(appointment)
+                    - appointmentsFacade.extractDelayHours(appointment.getCounter_staff_comment());
             LocalDateTime delayedEnd = LocalDateTime.of(appointment.getAppointment_date(), appointment.getAppointment_time())
                     .plusHours(Math.max(1, baseDurationHours + extraHours));
 
             appointment.setStatus("DELAYED");
             appointment.setTechnician_notes(delayReason);
-            appointment.setCounter_staff_comment(appointmentsFacade.buildDelayedComment(extraHours,
+            appointment.setCounter_staff_comment(appointmentsFacade.buildDelayedComment(
+                    appointment.getCounter_staff_comment(),
+                    extraHours,
                     "Repair is delayed and needs about " + extraHours + " more hour(s) to complete. Reception may reassign upcoming appointments if needed."));
             appointmentsFacade.edit(appointment);
             notifyRelevantParties(request, appointment, currentUser,
@@ -121,10 +126,14 @@ public class TechnicianCommentServlet extends HttpServlet {
                 }
 
                 if ("ASSIGNED".equals(impactedStatus)) {
-                    impacted.setCounter_staff_comment("Inspection may start later because the earlier repair needs more time. Reception should consider another technician before quotation preparation.");
+                    impacted.setCounter_staff_comment(appointmentsFacade.preserveSchedulingMetadata(
+                            impacted.getCounter_staff_comment(),
+                            "Inspection may start later because the earlier repair needs more time. Reception should consider another technician before quotation preparation."));
                 } else {
                     impacted.setStatus("DELAYED");
-                    impacted.setCounter_staff_comment("Your appointment is delayed because the previous repair needs more time. Reception may reassign another technician or contact you with an updated slot.");
+                    impacted.setCounter_staff_comment(appointmentsFacade.preserveSchedulingMetadata(
+                            impacted.getCounter_staff_comment(),
+                            "Your appointment is delayed because the previous repair needs more time. Reception may reassign another technician or contact you with an updated slot."));
                 }
                 appointmentsFacade.edit(impacted);
                 if (impacted.getCustomer_id() != null) {

@@ -10,6 +10,7 @@ import java.io.IOException;
 import models.UsersEntity;
 import models.UsersEntityFacade;
 import utils.NotificationService;
+import utils.hashPassword;
 
 public class ManagerUserServlet extends HttpServlet {
 
@@ -58,21 +59,6 @@ public class ManagerUserServlet extends HttpServlet {
 
     private void handleUpdate(HttpServletRequest request, HttpServletResponse response,
             UsersEntity currentUser, UsersEntity targetUser) throws IOException {
-        if (isProtectedManagerAccount(targetUser) && !canToggleManagerAccess(currentUser)) {
-            redirect(response, request, "error=ProtectedManager");
-            return;
-        }
-
-        String role = normalizeRole(request.getParameter("role"));
-        if (role.isEmpty()) {
-            role = targetUser.getRole() == null ? "receptionist" : normalizeRole(targetUser.getRole());
-        }
-
-        if ("manager".equals(role) && !canToggleManagerAccess(currentUser)) {
-            redirect(response, request, "error=ManagerAccessRequired");
-            return;
-        }
-
         String newEmail = trim(request.getParameter("email"));
         UsersEntity existing = userFacade.findByEmail(newEmail);
         if (existing != null && !existing.getId().equals(targetUser.getId())) {
@@ -84,12 +70,15 @@ public class ManagerUserServlet extends HttpServlet {
         targetUser.setEmail(newEmail);
         targetUser.setPhone_number(trim(request.getParameter("phone")));
         targetUser.setGender(trim(request.getParameter("gender")));
+        targetUser.setIs_malaysian(parseInteger(request.getParameter("is_malaysian")));
         targetUser.setOrigin_country(trim(request.getParameter("origin_country")));
+        targetUser.setCountry_code(parseInteger(request.getParameter("country_code")));
+        targetUser.setIC_number_passportnumber(trim(request.getParameter("identity_number")));
         targetUser.setHome_address(trim(request.getParameter("home_address")));
-        targetUser.setRole(role);
 
-        if (!"manager".equals(role)) {
-            targetUser.setHave_Manager_access(0);
+        String newPassword = trim(request.getParameter("new_password"));
+        if (!newPassword.isEmpty()) {
+            targetUser.setPassword(hashPassword.hashPassword(newPassword));
         }
 
         userFacade.edit(targetUser);
@@ -100,6 +89,10 @@ public class ManagerUserServlet extends HttpServlet {
             UsersEntity currentUser, UsersEntity targetUser) throws IOException {
         if (targetUser.getId().equals(currentUser.getId())) {
             redirect(response, request, "error=DeleteSelf");
+            return;
+        }
+        if ("manager".equals(normalizeRole(targetUser.getRole()))) {
+            redirect(response, request, "error=CannotDeleteManager");
             return;
         }
         userFacade.remove(targetUser);
@@ -152,10 +145,7 @@ public class ManagerUserServlet extends HttpServlet {
     }
 
     private boolean isProtectedManagerAccount(UsersEntity user) {
-        return user != null
-                && "manager".equals(normalizeRole(user.getRole()))
-                && user.getHave_Manager_access() != null
-                && user.getHave_Manager_access() == 1;
+        return false;
     }
 
     private Integer parseInteger(String value) {

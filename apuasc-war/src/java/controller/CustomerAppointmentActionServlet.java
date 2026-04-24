@@ -76,7 +76,9 @@ public class CustomerAppointmentActionServlet extends HttpServlet {
 
         if ("ACCEPT".equals(action)) {
             appointment.setStatus("ACCEPTED");
-            appointment.setCounter_staff_comment("Customer accepted the quotation. Repair work can begin.");
+            appointment.setCounter_staff_comment(appointmentsFacade.preserveSchedulingMetadata(
+                    appointment.getCounter_staff_comment(),
+                    "Customer accepted the quotation. Repair work can begin."));
             appointmentsFacade.edit(appointment);
             notifyAppointmentDecision(request, currentUser, appointment, "Quotation accepted",
                     "Customer accepted the quotation. Repair work can begin.",
@@ -87,7 +89,9 @@ public class CustomerAppointmentActionServlet extends HttpServlet {
 
         if ("REJECT".equals(action)) {
             appointment.setStatus("REJECTED");
-            appointment.setCounter_staff_comment("Customer rejected the quotation and requested revision before proceeding.");
+            appointment.setCounter_staff_comment(appointmentsFacade.preserveSchedulingMetadata(
+                    appointment.getCounter_staff_comment(),
+                    "Customer rejected the quotation and requested revision before proceeding."));
             appointmentsFacade.edit(appointment);
             notifyAppointmentDecision(request, currentUser, appointment, "Quotation rejected",
                     "Customer rejected the quotation and requested revision.",

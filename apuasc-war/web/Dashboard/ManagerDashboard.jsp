@@ -1,4 +1,4 @@
-<%@page import="java.text.NumberFormat,java.util.Collections,java.util.List,java.util.Locale,models.PaymentRecord,models.PaymentRecordFacade,models.ServiceEntityFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
+<%@page import="java.text.NumberFormat,java.util.Collections,java.util.HashMap,java.util.List,java.util.Locale,java.util.Map,models.PaymentRecord,models.PaymentRecordFacade,models.ServiceEntityFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
 <%
     UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
     if (currentUser == null) {
@@ -19,6 +19,7 @@
     String collectedRevenue;
     List<UsersEntity> staffUsers;
     List<PaymentRecord> recentPayments;
+    Map<Integer, String> userNameById;
 
     if (request.getAttribute("totalStaff") != null) {
         totalStaff = (Long) request.getAttribute("totalStaff");
@@ -29,6 +30,9 @@
         collectedRevenue = (String) request.getAttribute("collectedRevenue");
         staffUsers = (List<UsersEntity>) request.getAttribute("staffUsers");
         recentPayments = (List<PaymentRecord>) request.getAttribute("recentPayments");
+        userNameById = request.getAttribute("userNameById") == null
+                ? new HashMap<Integer, String>()
+                : (Map<Integer, String>) request.getAttribute("userNameById");
     } else {
         UsersEntityFacade userFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
         ServiceEntityFacade serviceFacade = EjbLookup.lookup(ServiceEntityFacade.class, "ServiceEntityFacade");
@@ -43,6 +47,12 @@
         collectedRevenue = currency.format(paymentRecordFacade.sumByStatus("paid"));
         staffUsers = userFacade.findStaffUsers();
         recentPayments = paymentRecordFacade.findAllOrdered();
+        userNameById = new HashMap<Integer, String>();
+        for (UsersEntity u : userFacade.findAll()) {
+            if (u != null && u.getId() != null) {
+                userNameById.put(u.getId(), u.getName() == null ? ("User #" + u.getId()) : u.getName().trim());
+            }
+        }
     }
 %>
 <!DOCTYPE html>
@@ -212,7 +222,7 @@
                 <div class="payment-line">
                     <div>
                         <strong><%= payment.getInvoice_number() %></strong>
-                        <small><%= payment.getCustomer_name() %> | <%= payment.getService_name() %></small>
+                        <small><%= payment.getUser_id() == null ? "-" : userNameById.getOrDefault(payment.getUser_id(), "User #" + payment.getUser_id()) %> | <%= payment.getService_name() %></small>
                     </div>
                     <span class="status-pill <%= statusClass %>"><%= payment.getStatus() %></span>
                 </div>

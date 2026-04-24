@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 
@@ -46,6 +47,10 @@ public class Appointments implements Serializable {
     private String customer_feedback;
     @Column(name = "COUNTER_STAFF_COMMENT")
     private String counter_staff_comment;
+    @Column(name = "DELAY_ALERT_SENT")
+    private boolean delay_alert_sent;
+    @Column(name = "DELAY_FLAGGED_AT")
+    private LocalDateTime delay_flagged_at;
 
     public Integer getAppointment_id() {
         return appointment_id;
@@ -133,6 +138,22 @@ public class Appointments implements Serializable {
 
     public void setCounter_staff_comment(String counter_staff_comment) {
         this.counter_staff_comment = counter_staff_comment;
+    }
+
+    public boolean isDelay_alert_sent() {
+        return delay_alert_sent;
+    }
+
+    public void setDelay_alert_sent(boolean delay_alert_sent) {
+        this.delay_alert_sent = delay_alert_sent;
+    }
+
+    public LocalDateTime getDelay_flagged_at() {
+        return delay_flagged_at;
+    }
+
+    public void setDelay_flagged_at(LocalDateTime delay_flagged_at) {
+        this.delay_flagged_at = delay_flagged_at;
     }
 
     public Integer getId() {

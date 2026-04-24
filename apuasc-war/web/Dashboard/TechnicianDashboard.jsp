@@ -63,11 +63,14 @@
                         ServiceEntity service = serviceFacade.find(link.getService_id());
                         if (service != null) names.add(service.getService_name());
                     }
+                    String bookingLabel = names.isEmpty()
+                            ? appointmentsFacade.getBookingTypeLabel(appointment.getCounter_staff_comment())
+                            : String.join(", ", names);
             %>
                 <div class="queue-item">
                     <div>
                         <strong><%= customer == null ? "Customer" : customer.getName() %> - #APT<%= appointment.getAppointment_id() %></strong><br>
-                        <small><%= names.isEmpty() ? "No services selected yet" : String.join(", ", names) %> | <%= appointment.getAppointment_date() %> <%= appointment.getAppointment_time() %></small>
+                        <small><%= bookingLabel %> | <%= appointment.getAppointment_date() %> <%= appointment.getAppointment_time() %></small>
                     </div>
                     <span class="status waiting"><%= displayTechnicianStatus(appointment.getStatus()) %></span>
                 </div>

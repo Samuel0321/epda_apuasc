@@ -6,11 +6,14 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import models.AppointmentService;
 import models.AppointmentServiceFacade;
@@ -74,6 +77,7 @@ public class CustomerInvoiceDownloadServlet extends HttpServlet {
 
         response.setContentType("text/html; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + invoiceNumber + ".html\"");
+        String logoDataUri = loadLogoDataUri();
 
         try (PrintWriter out = response.getWriter()) {
             out.println("<!DOCTYPE html>");
@@ -82,6 +86,8 @@ public class CustomerInvoiceDownloadServlet extends HttpServlet {
             out.println("body{font-family:'Segoe UI',sans-serif;background:#f8fafc;color:#0f172a;padding:32px;}");
             out.println(".invoice{max-width:820px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:32px;}");
             out.println(".top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:28px;}");
+            out.println(".brand-wrap{display:flex;align-items:center;gap:12px;}");
+            out.println(".brand-logo{width:46px;height:46px;object-fit:contain;border:1px solid #e2e8f0;border-radius:10px;padding:4px;background:#fff;}");
             out.println(".brand{font-size:28px;font-weight:700;}");
             out.println(".muted{color:#64748b;font-size:14px;}");
             out.println(".grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:24px;}");
@@ -93,7 +99,11 @@ public class CustomerInvoiceDownloadServlet extends HttpServlet {
             out.println(".row{display:flex;justify-content:space-between;gap:20px;}");
             out.println(".total{font-size:22px;font-weight:700;}");
             out.println("</style></head><body><div class=\"invoice\">");
-            out.println("<div class=\"top\"><div><div class=\"brand\">AutoFix Pro</div><div class=\"muted\">Customer Invoice</div></div>");
+            out.println("<div class=\"top\"><div><div class=\"brand-wrap\">");
+            if (!logoDataUri.isEmpty()) {
+                out.println("<img class=\"brand-logo\" src=\"" + logoDataUri + "\" alt=\"APU ASC Logo\">");
+            }
+            out.println("<div><div class=\"brand\">APU ASC</div><div class=\"muted\">Customer Invoice</div></div></div></div>");
             out.println("<div style=\"text-align:right\"><div><strong>" + escape(invoiceNumber) + "</strong></div>");
             out.println("<div class=\"muted\">Generated " + escape(java.time.LocalDate.now().toString()) + "</div></div></div>");
 
@@ -169,5 +179,25 @@ public class CustomerInvoiceDownloadServlet extends HttpServlet {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;");
+    }
+
+    private String loadLogoDataUri() {
+        try (InputStream in = getServletContext().getResourceAsStream("/Icon/APUASC.png")) {
+            if (in == null) {
+                return "";
+            }
+
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[4096];
+            int read;
+            while ((read = in.read(chunk)) != -1) {
+                buffer.write(chunk, 0, read);
+            }
+
+            String base64 = Base64.getEncoder().encodeToString(buffer.toByteArray());
+            return "data:image/png;base64," + base64;
+        } catch (IOException ex) {
+            return "";
+        }
     }
 }

@@ -339,6 +339,8 @@
             <div class="alert alert-success">Manager access updated successfully.</div>
         <% } else if ("ProtectedManager".equals(request.getParameter("error"))) { %>
             <div class="alert alert-error">Managers without manager access cannot edit managers who already have manager access.</div>
+        <% } else if ("CannotDeleteManager".equals(request.getParameter("error"))) { %>
+            <div class="alert alert-error">Manager accounts cannot be deleted.</div>
         <% } else if (request.getParameter("error") != null) { %>
             <div class="alert alert-error">The requested manager action could not be completed.</div>
         <% } %>
@@ -369,11 +371,8 @@
                 </thead>
                 <tbody>
                     <% for (UsersEntity staff : directoryUsers) {
-                        boolean managerLike = "manager".equalsIgnoreCase(staff.getRole());
-                        boolean protectedManager = managerLike
-                                && staff.getHave_Manager_access() != null
-                                && staff.getHave_Manager_access() == 1
-                                && !canToggleManagerAccess;
+                        String staffRole = staff.getRole() == null ? "" : staff.getRole().trim().toLowerCase();
+                        boolean managerLike = "manager".equals(staffRole);
                     %>
                     <tr class="staff-row"
                         data-name="<%= staff.getName() %>"
@@ -381,7 +380,10 @@
                         data-phone="<%= staff.getPhone_number() == null ? "" : staff.getPhone_number() %>"
                         data-role="<%= staff.getRole() %>"
                         data-gender="<%= staff.getGender() == null ? "" : staff.getGender() %>"
+                        data-is-malaysian="<%= staff.getIs_malaysian() == null ? "" : staff.getIs_malaysian() %>"
+                        data-identity-number="<%= staff.getIC_number_passportnumber() == null ? "" : staff.getIC_number_passportnumber() %>"
                         data-country="<%= staff.getOrigin_country() == null ? "" : staff.getOrigin_country() %>"
+                        data-country-code="<%= staff.getCountry_code() == null ? "" : staff.getCountry_code() %>"
                         data-address="<%= staff.getHome_address() == null ? "" : staff.getHome_address() %>"
                         data-manager-access="<%= staff.getHave_Manager_access() != null && staff.getHave_Manager_access() == 1 ? "1" : "0" %>">
                         <td><strong><%= staff.getName() %></strong></td>
@@ -411,17 +413,15 @@
                         <td>
                             <div class="action-buttons">
                                 <button type="button" class="btn-small btn-view" onclick="openViewModal(this)">View</button>
-                                <% if (protectedManager) { %>
-                                <button type="button" class="btn-small btn-edit" disabled title="Manager access is required to edit this manager">Edit</button>
-                                <% } else { %>
                                 <button type="button" class="btn-small btn-edit" onclick="openEditModal(this, '<%= staff.getId() %>')">Edit</button>
-                                <% } %>
-                                <% if (!staff.getId().equals(currentUser.getId())) { %>
+                                <% if (!staff.getId().equals(currentUser.getId()) && !managerLike) { %>
                                 <form class="inline-form" method="post" action="<%= request.getContextPath() %>/ManagerUserServlet" onsubmit="return confirm('Delete this staff account?');">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="userId" value="<%= staff.getId() %>">
                                     <button type="submit" class="btn-small btn-delete">Delete</button>
                                 </form>
+                                <% } else if (managerLike) { %>
+                                <button type="button" class="btn-small btn-delete" disabled title="Manager accounts cannot be deleted">Delete</button>
                                 <% } %>
                             </div>
                         </td>
@@ -439,16 +439,19 @@
             <h3>User Profile</h3>
             <button class="close-btn" type="button" onclick="closeModal('viewModal')">Close</button>
         </div>
-        <div class="detail-grid">
-            <div class="detail-card"><strong>Name</strong><span id="viewName"></span></div>
-            <div class="detail-card"><strong>Email</strong><span id="viewEmail"></span></div>
-            <div class="detail-card"><strong>Role</strong><span id="viewRole"></span></div>
-            <div class="detail-card"><strong>Phone</strong><span id="viewPhone"></span></div>
-            <div class="detail-card"><strong>Gender</strong><span id="viewGender"></span></div>
-            <div class="detail-card"><strong>Manager Access</strong><span id="viewManagerAccess"></span></div>
-            <div class="detail-card full-span"><strong>Country</strong><span id="viewCountry"></span></div>
-            <div class="detail-card full-span"><strong>Address</strong><span id="viewAddress"></span></div>
-        </div>
+            <div class="detail-grid">
+                <div class="detail-card"><strong>Name</strong><span id="viewName"></span></div>
+                <div class="detail-card"><strong>Email</strong><span id="viewEmail"></span></div>
+                <div class="detail-card"><strong>Role</strong><span id="viewRole"></span></div>
+                <div class="detail-card"><strong>Phone</strong><span id="viewPhone"></span></div>
+                <div class="detail-card"><strong>Gender</strong><span id="viewGender"></span></div>
+                <div class="detail-card"><strong>Is Malaysian</strong><span id="viewMalaysian"></span></div>
+                <div class="detail-card"><strong>IC / Passport Number</strong><span id="viewIdentityNumber"></span></div>
+                <div class="detail-card"><strong>Country Code</strong><span id="viewCountryCode"></span></div>
+                <div class="detail-card"><strong>Manager Access</strong><span id="viewManagerAccess"></span></div>
+                <div class="detail-card full-span"><strong>Country</strong><span id="viewCountry"></span></div>
+                <div class="detail-card full-span"><strong>Address</strong><span id="viewAddress"></span></div>
+            </div>
     </div>
 </div>
 
@@ -476,25 +479,44 @@
                 </div>
                 <div class="form-group">
                     <label>Role</label>
-                    <select name="role" id="editRole">
-                        <option value="receptionist">Receptionist</option>
-                        <option value="technician">Technician</option>
-                        <% if (canToggleManagerAccess) { %>
-                        <option value="manager">Manager</option>
-                        <% } %>
-                    </select>
+                    <input type="text" id="editRole" readonly>
+                    <div class="helper-text">Managers can edit profile details here, but role changes are disabled.</div>
                 </div>
                 <div class="form-group">
                     <label>Gender</label>
-                    <input type="text" name="gender" id="editGender">
+                    <select name="gender" id="editGender">
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Is Malaysian</label>
+                    <select name="is_malaysian" id="editIsMalaysian">
+                        <option value="">Select Option</option>
+                        <option value="1">Yes</option>
+                        <option value="0">No</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>IC / Passport Number</label>
+                    <input type="text" name="identity_number" id="editIdentityNumber">
                 </div>
                 <div class="form-group">
                     <label>Origin Country</label>
                     <input type="text" name="origin_country" id="editCountry">
                 </div>
+                <div class="form-group">
+                    <label>Country Code</label>
+                    <input type="number" name="country_code" id="editCountryCode">
+                </div>
                 <div class="form-group full-span">
                     <label>Home Address</label>
                     <textarea name="home_address" id="editAddress" rows="3"></textarea>
+                </div>
+                <div class="form-group full-span">
+                    <label>Reset Password</label>
+                    <input type="password" name="new_password" id="editPassword" placeholder="Leave blank to keep current password">
                 </div>
                 <div class="form-group full-span">
                     <label>Manager Access</label>
@@ -525,6 +547,10 @@
         document.getElementById("viewRole").textContent = row.dataset.role || "-";
         document.getElementById("viewPhone").textContent = row.dataset.phone || "-";
         document.getElementById("viewGender").textContent = row.dataset.gender || "-";
+        document.getElementById("viewMalaysian").textContent =
+            row.dataset.isMalaysian === "1" ? "Yes" : (row.dataset.isMalaysian === "0" ? "No" : "-");
+        document.getElementById("viewIdentityNumber").textContent = row.dataset.identityNumber || "-";
+        document.getElementById("viewCountryCode").textContent = row.dataset.countryCode || "-";
         document.getElementById("viewCountry").textContent = row.dataset.country || "-";
         document.getElementById("viewAddress").textContent = row.dataset.address || "-";
         document.getElementById("viewManagerAccess").textContent = row.dataset.managerAccess === "1" ? "Enabled" : "Disabled";
@@ -537,10 +563,14 @@
         document.getElementById("editName").value = row.dataset.name || "";
         document.getElementById("editEmail").value = row.dataset.email || "";
         document.getElementById("editPhone").value = row.dataset.phone || "";
-        document.getElementById("editRole").value = row.dataset.role || "receptionist";
+        document.getElementById("editRole").value = row.dataset.role || "";
         document.getElementById("editGender").value = row.dataset.gender || "";
+        document.getElementById("editIsMalaysian").value = row.dataset.isMalaysian || "";
+        document.getElementById("editIdentityNumber").value = row.dataset.identityNumber || "";
         document.getElementById("editCountry").value = row.dataset.country || "";
+        document.getElementById("editCountryCode").value = row.dataset.countryCode || "";
         document.getElementById("editAddress").value = row.dataset.address || "";
+        document.getElementById("editPassword").value = "";
         document.getElementById("editManagerAccessDisplay").value =
             row.dataset.managerAccess === "1" ? "Enabled in table toggle" : "Disabled in table toggle";
 

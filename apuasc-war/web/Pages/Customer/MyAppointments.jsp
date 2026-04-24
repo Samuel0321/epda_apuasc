@@ -32,7 +32,8 @@
                 names.add(service.getService_name());
             }
         }
-        serviceNames.put(appointment.getAppointment_id(), names.isEmpty() ? "Service Request" : String.join(", ", names));
+        serviceNames.put(appointment.getAppointment_id(),
+                names.isEmpty() ? appointmentsFacade.getBookingTypeLabel(appointment.getCounter_staff_comment()) : String.join(", ", names));
 
         UsersEntity technician = appointment.getTechnician_id() == null ? null : userFacade.find(appointment.getTechnician_id());
         technicianNames.put(appointment.getAppointment_id(), technician == null ? "Pending assignment" : technician.getName());
@@ -117,7 +118,6 @@
         <% if ("FeedbackRequired".equals(request.getParameter("error"))) { %>
             <div class="alert alert-error">Please enter your feedback before saving.</div>
         <% } %>
-
         <div class="summary-cards">
             <div class="summary-card">
                 <div class="summary-label">Total Appointments</div>
@@ -178,7 +178,7 @@
                             <strong>Amount</strong>
                             <div style="font-weight:700;margin-top:6px;"><%= displayAmount(apt.getTotal_amount()) %></div>
                             <% if ("DELAYED".equals(status)) { %>
-                                <div style="margin-top:10px;color:#b45309;"><%= sanitizeComment(apt.getCounter_staff_comment()) %></div>
+                                <div style="margin-top:10px;color:#b45309;"><%= appointmentsFacade.stripSchedulingMetadata(apt.getCounter_staff_comment()) %></div>
                             <% } %>
                             <% if ("COMPLETED".equals(status) || "UNPAID".equals(status)) { %>
                                 <div style="margin-top:10px;color:#92400e;">Please find receptionist at the counter for payment.</div>
@@ -217,7 +217,7 @@
                                     <button type="submit" class="task-btn" style="background:#ef4444;color:white;">Cancel Appointment</button>
                                 </form>
                             <% } %>
-                            <button class="task-btn btn-secondary" type="button" onclick="openAppointmentModal('#APT<%= String.format("%03d", apt.getAppointment_id()) %>', '<%= apt.getAppointment_date() %>', '<%= apt.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(apt) %>', '<%= escapeForJs(aptServices) %>', '<%= escapeForJs(tName) %>', '<%= escapeForJs(displayCustomerStatus(status)) %>', '<%= escapeForJs(displayAmount(apt.getTotal_amount())) %>', '<%= escapeForJs(apt.getCustomer_notes()) %>', '<%= escapeForJs(sanitizeComment(apt.getCounter_staff_comment())) %>', '<%= escapeForJs(apt.getTechnician_notes()) %>', '<%= escapeForJs(apt.getCustomer_feedback()) %>')">View Details</button>
+                            <button class="task-btn btn-secondary" type="button" onclick="openAppointmentModal('#APT<%= String.format("%03d", apt.getAppointment_id()) %>', '<%= apt.getAppointment_date() %>', '<%= apt.getAppointment_time() %> - <%= appointmentsFacade.estimateAppointmentEndTime(apt) %>', '<%= escapeForJs(aptServices) %>', '<%= escapeForJs(tName) %>', '<%= escapeForJs(displayCustomerStatus(status)) %>', '<%= escapeForJs(displayAmount(apt.getTotal_amount())) %>', '<%= escapeForJs(apt.getCustomer_notes()) %>', '<%= escapeForJs(appointmentsFacade.stripSchedulingMetadata(apt.getCounter_staff_comment())) %>', '<%= escapeForJs(apt.getTechnician_notes()) %>', '<%= escapeForJs(apt.getCustomer_feedback()) %>')">View Details</button>
                         </div>
                     </div>
                 </div>
@@ -363,21 +363,6 @@
             case "REJECTED": return "Quotation Rejected";
             default: return normalized;
         }
-    }
-
-    private String sanitizeComment(String value) {
-        if (value == null) {
-            return "";
-        }
-        String trimmed = value.trim();
-        if (trimmed.startsWith("[DELAY_HOURS=")) {
-            int closingIndex = trimmed.indexOf(']');
-            if (closingIndex >= 0 && closingIndex + 1 < trimmed.length()) {
-                return trimmed.substring(closingIndex + 1).trim();
-            }
-            return "";
-        }
-        return trimmed;
     }
 %>
 

@@ -1,4 +1,4 @@
-<%@page import="java.text.NumberFormat,java.util.List,java.util.Locale,models.PaymentRecord,models.PaymentRecordFacade,models.UsersEntity,utils.EjbLookup"%>
+<%@page import="java.text.NumberFormat,java.util.Arrays,java.util.HashMap,java.util.List,java.util.Locale,java.util.Map,models.PaymentRecord,models.PaymentRecordFacade,models.UsersEntity,models.UsersEntityFacade,utils.EjbLookup"%>
 <%
     UsersEntity currentUser = (UsersEntity) session.getAttribute("user");
     if (currentUser == null) {
@@ -30,6 +30,22 @@
         pendingRevenue = currency.format(paymentRecordFacade.sumByStatus("pending"));
         paidCount = paymentRecordFacade.countByStatus("paid");
         pendingCount = paymentRecordFacade.countByStatus("pending");
+    }
+
+    UsersEntityFacade userFacade = EjbLookup.lookup(UsersEntityFacade.class, "UsersEntityFacade");
+    Map<Integer, String> userNameById = new HashMap<Integer, String>();
+    for (UsersEntity user : userFacade.findAll()) {
+        if (user != null && user.getId() != null) {
+            userNameById.put(user.getId(), user.getName() == null ? ("User #" + user.getId()) : user.getName().trim());
+        }
+    }
+    String defaultReceptionistName = "-";
+    List<UsersEntity> receptionistUsers = userFacade.findByRoles(Arrays.asList("receptionist", "counter_staff"));
+    if (receptionistUsers != null && !receptionistUsers.isEmpty()) {
+        UsersEntity fallbackReceptionist = receptionistUsers.get(0);
+        if (fallbackReceptionist != null && fallbackReceptionist.getName() != null && !fallbackReceptionist.getName().trim().isEmpty()) {
+            defaultReceptionistName = fallbackReceptionist.getName().trim();
+        }
     }
 %>
 <!DOCTYPE html>
@@ -235,17 +251,21 @@
                 <tbody>
                     <% for (PaymentRecord payment : payments) {
                         String statusClass = "paid".equalsIgnoreCase(payment.getStatus()) ? "status-paid" : "status-pending";
+                        String customerText = payment.getUser_id() == null ? "-" : userNameById.getOrDefault(payment.getUser_id(), "User #" + payment.getUser_id());
+                        String receivedByText = payment.getReceived_by_user_id() == null
+                                ? defaultReceptionistName
+                                : userNameById.getOrDefault(payment.getReceived_by_user_id(), "User #" + payment.getReceived_by_user_id());
                     %>
                     <tr data-invoice="<%= payment.getInvoice_number() %>"
-                        data-customer="<%= payment.getCustomer_name() %>"
+                        data-customer="<%= customerText %>"
                         data-service="<%= payment.getService_name() %>"
                         data-amount="<%= currency.format(payment.getAmount()) %>"
                         data-date="<%= payment.getPayment_date() %>"
                         data-status="<%= payment.getStatus() %>"
                         data-receipt="<%= payment.getReceipt_number() %>"
-                        data-received-by="<%= payment.getReceived_by() %>">
+                        data-received-by="<%= receivedByText %>">
                         <td><%= payment.getInvoice_number() %></td>
-                        <td><%= payment.getCustomer_name() %></td>
+                        <td><%= customerText %></td>
                         <td><%= payment.getService_name() %></td>
                         <td><%= currency.format(payment.getAmount()) %></td>
                         <td><%= payment.getPayment_date() %></td>

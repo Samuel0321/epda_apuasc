@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Column;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,15 +16,26 @@ public class PaymentRecord implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "ID")
     private Integer id;
+    @Column(name = "APPOINTMENT_ID")
+    private Integer appointment_id;
+    @Column(name = "USER_ID")
+    private Integer user_id;
+    @Column(name = "INVOICE_NUMBER")
     private String invoice_number;
+    @Column(name = "RECEIPT_NUMBER")
     private String receipt_number;
-    private String customer_name;
+    @Column(name = "SERVICE_NAME")
     private String service_name;
+    @Column(name = "AMOUNT")
     private BigDecimal amount;
+    @Column(name = "STATUS")
     private String status;
+    @Column(name = "PAYMENT_DATE")
     private LocalDate payment_date;
-    private String received_by;
+    @Column(name = "RECEIVED_BY_USER_ID")
+    private Integer received_by_user_id;
 
     public Integer getId() {
         return id;
@@ -31,6 +43,22 @@ public class PaymentRecord implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Integer getAppointment_id() {
+        return appointment_id;
+    }
+
+    public void setAppointment_id(Integer appointment_id) {
+        this.appointment_id = appointment_id;
+    }
+
+    public Integer getUser_id() {
+        return user_id;
+    }
+
+    public void setUser_id(Integer user_id) {
+        this.user_id = user_id;
     }
 
     public String getInvoice_number() {
@@ -47,14 +75,6 @@ public class PaymentRecord implements Serializable {
 
     public void setReceipt_number(String receipt_number) {
         this.receipt_number = receipt_number;
-    }
-
-    public String getCustomer_name() {
-        return customer_name;
-    }
-
-    public void setCustomer_name(String customer_name) {
-        this.customer_name = customer_name;
     }
 
     public String getService_name() {
@@ -89,12 +109,12 @@ public class PaymentRecord implements Serializable {
         this.payment_date = payment_date;
     }
 
-    public String getReceived_by() {
-        return received_by;
+    public Integer getReceived_by_user_id() {
+        return received_by_user_id;
     }
 
-    public void setReceived_by(String received_by) {
-        this.received_by = received_by;
+    public void setReceived_by_user_id(Integer received_by_user_id) {
+        this.received_by_user_id = received_by_user_id;
     }
 
     @Override
