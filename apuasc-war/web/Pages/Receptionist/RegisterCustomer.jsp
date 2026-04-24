@@ -109,6 +109,18 @@
             border: 1px solid #bbf7d0;
         }
 
+        .password-help {
+            display: block;
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 5px;
+            min-height: 16px;
+        }
+
+        .password-help.valid {
+            color: #16a34a;
+        }
+
         .form-actions {
             display: flex;
             gap: 10px;
@@ -180,7 +192,7 @@
                 <div class="message success">Customer registered successfully.</div>
             </c:if>
 
-            <form action="../../CustomerRegistrationServlet" method="post">
+            <form action="../../CustomerRegistrationServlet" method="post" onsubmit="return validateRequiredPassword();">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="name">Full Name *</label>
@@ -196,6 +208,7 @@
                     <div class="form-group">
                         <label for="password">Temporary Password *</label>
                         <input type="password" id="password" name="password" required>
+                        <span id="passwordHelp" class="password-help"></span>
                     </div>
                     <div class="form-group">
                         <label for="phone">Phone Number</label>
@@ -271,6 +284,31 @@
     function setCountryCode(select) {
         const code = select.options[select.selectedIndex].dataset.code || "";
         document.getElementById("country_code").value = code;
+    }
+
+    document.getElementById("password").addEventListener("input", function () {
+        updatePasswordHelp(this.value, document.getElementById("passwordHelp"), false);
+    });
+
+    function validateRequiredPassword() {
+        return updatePasswordHelp(document.getElementById("password").value, document.getElementById("passwordHelp"), true);
+    }
+
+    function updatePasswordHelp(password, helpText, blockSubmit) {
+        const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/;
+        if (password.length === 0) {
+            helpText.textContent = "";
+            helpText.classList.remove("valid");
+            return !blockSubmit;
+        }
+        if (!strongRegex.test(password)) {
+            helpText.textContent = "At least 8 chars, uppercase, lowercase, number, and special character";
+            helpText.classList.remove("valid");
+            return false;
+        }
+        helpText.textContent = "Strong password";
+        helpText.classList.add("valid");
+        return true;
     }
 </script>
 

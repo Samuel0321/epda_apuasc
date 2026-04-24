@@ -357,8 +357,9 @@
                         <td><span class="badge <%= statusClass %>"><%= statusText %></span></td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-small btn-info" onclick="window.location.href='Appointments.jsp'">View</button>
-                                <% if ("PAID".equals(status)) { %><button class="btn-small btn-receipt" onclick="alert('Receipt generated.')">Receipt</button><% } %>
+                                <% if ("PAID".equals(status)) { %>
+                                <button class="btn-small btn-receipt" type="button" onclick="downloadReceipt('<%= appointmentId %>')">Receipt</button>
+                                <% } %>
                                 <% if (!("PAID".equals(status) || "FAILED".equals(status))) { %>
                                 <form method="post" action="<%= request.getContextPath() %>/ReceptionistPaymentServlet" style="display:inline;">
                                     <input type="hidden" name="appointmentId" value="<%= appointmentId %>">
@@ -397,6 +398,10 @@
             });
         });
     });
+
+    function downloadReceipt(appointmentId) {
+        window.location.href = '<%= request.getContextPath() %>/CustomerInvoiceDownloadServlet?appointmentId=' + encodeURIComponent(appointmentId);
+    }
 </script>
 </body>
 </html>

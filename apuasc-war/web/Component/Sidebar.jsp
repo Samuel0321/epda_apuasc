@@ -76,5 +76,11 @@
 
     <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
     <a href="<%= contextPath %>/Pages/Common/Profile.jsp" class="nav-item <%= currentURI.contains("Profile.jsp") ? "active" : "" %>">Profile</a>
-    <a href="<%= contextPath %>/loginjsp.jsp?logout=1" class="nav-item">Logout</a>
+    <a href="<%= contextPath %>/loginjsp.jsp?logout=1" class="nav-item" onclick="return confirmLogout();">Logout</a>
 </div>
+
+<script>
+    function confirmLogout() {
+        return confirm("Are you sure you want to log out?");
+    }
+</script>

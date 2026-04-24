@@ -292,7 +292,7 @@
                                 : "Customer only" %>
                     </div>
                 </div>
-                <form action="RegisterServlet" method="post">
+                <form action="RegisterServlet" method="post" onsubmit="return validateRequiredPassword('password', 'passwordHelp');">
                     <div class="form-grid">
                         <!-- Name -->
                         <div class="form-group">
@@ -409,7 +409,7 @@
             document.getElementById("password").addEventListener("input", function() {
                 const password = this.value;
                 const helpText = document.getElementById("passwordHelp");
-                const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+                const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/;
 
                 if (password.length === 0) {
                     helpText.textContent = "";
@@ -418,10 +418,22 @@
                     helpText.textContent = "At least 8 chars, uppercase, lowercase, number, and special character";
                     helpText.classList.remove("valid");
                 } else {
-                    helpText.textContent = "Strong password ✓";
+                    helpText.textContent = "Strong password";
                     helpText.classList.add("valid");
                 }
             });
+
+            function validateRequiredPassword(inputId, helpId) {
+                const password = document.getElementById(inputId).value;
+                const helpText = document.getElementById(helpId);
+                const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/;
+                if (!strongRegex.test(password)) {
+                    helpText.textContent = "At least 8 chars, uppercase, lowercase, number, and special character";
+                    helpText.classList.remove("valid");
+                    return false;
+                }
+                return true;
+            }
 
             function toggleIdentityField() {
                 const value = document.getElementById("is_malaysian").value;

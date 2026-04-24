@@ -53,14 +53,26 @@ public class CustomerInvoiceDownloadServlet extends HttpServlet {
         }
 
         UsersEntity currentUser = userFacade.find(((UsersEntity) session.getAttribute("user")).getId());
-        if (currentUser == null || !"customer".equalsIgnoreCase(trim(currentUser.getRole()))) {
+        if (currentUser == null || !canDownloadInvoice(currentUser)) {
             response.sendRedirect(request.getContextPath() + "/loginjsp.jsp");
             return;
         }
 
         Integer appointmentId = parseInteger(request.getParameter("appointmentId"));
         Appointments appointment = appointmentId == null ? null : appointmentsFacade.find(appointmentId);
-        if (appointment == null || appointment.getCustomer_id() == null || !appointment.getCustomer_id().equals(currentUser.getId())) {
+        if (appointment == null || appointment.getCustomer_id() == null) {
+            response.sendRedirect(request.getContextPath() + "/Pages/Customer/PaymentHistory.jsp?error=InvalidInvoice");
+            return;
+        }
+
+        String currentRole = trim(currentUser.getRole()).toLowerCase();
+        boolean customerDownload = "customer".equals(currentRole);
+        if (customerDownload && !appointment.getCustomer_id().equals(currentUser.getId())) {
+            response.sendRedirect(request.getContextPath() + "/Pages/Customer/PaymentHistory.jsp?error=InvalidInvoice");
+            return;
+        }
+        UsersEntity customer = userFacade.find(appointment.getCustomer_id());
+        if (customer == null) {
             response.sendRedirect(request.getContextPath() + "/Pages/Customer/PaymentHistory.jsp?error=InvalidInvoice");
             return;
         }
@@ -108,7 +120,7 @@ public class CustomerInvoiceDownloadServlet extends HttpServlet {
             out.println("<div class=\"muted\">Generated " + escape(java.time.LocalDate.now().toString()) + "</div></div></div>");
 
             out.println("<div class=\"grid\">");
-            out.println("<div class=\"card\"><strong>Customer</strong><div>" + escape(currentUser.getName()) + "</div><div class=\"muted\">" + escape(nullToDash(currentUser.getEmail())) + "</div></div>");
+            out.println("<div class=\"card\"><strong>Customer</strong><div>" + escape(customer.getName()) + "</div><div class=\"muted\">" + escape(nullToDash(customer.getEmail())) + "</div></div>");
             out.println("<div class=\"card\"><strong>Appointment</strong><div>#APT" + appointment.getAppointment_id() + "</div><div class=\"muted\">"
                     + escape(String.valueOf(appointment.getAppointment_date())) + " | "
                     + escape(String.valueOf(appointment.getAppointment_time())) + " - "
@@ -157,6 +169,16 @@ public class CustomerInvoiceDownloadServlet extends HttpServlet {
 
     private String trim(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private boolean canDownloadInvoice(UsersEntity user) {
+        String role = trim(user.getRole()).toLowerCase();
+        return "customer".equals(role)
+                || "receptionist".equals(role)
+                || "counter_staff".equals(role)
+                || "manager".equals(role)
+                || "admin".equals(role)
+                || "super_admin".equals(role);
     }
 
     private String normalizeStatus(String value) {

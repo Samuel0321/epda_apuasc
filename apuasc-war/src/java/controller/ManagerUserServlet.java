@@ -10,6 +10,7 @@ import java.io.IOException;
 import models.UsersEntity;
 import models.UsersEntityFacade;
 import utils.NotificationService;
+import utils.PasswordValidator;
 import utils.hashPassword;
 
 public class ManagerUserServlet extends HttpServlet {
@@ -78,6 +79,10 @@ public class ManagerUserServlet extends HttpServlet {
 
         String newPassword = trim(request.getParameter("new_password"));
         if (!newPassword.isEmpty()) {
+            if (!PasswordValidator.isStrong(newPassword)) {
+                redirect(response, request, "error=WeakPassword");
+                return;
+            }
             targetUser.setPassword(hashPassword.hashPassword(newPassword));
         }
 
@@ -91,7 +96,7 @@ public class ManagerUserServlet extends HttpServlet {
             redirect(response, request, "error=DeleteSelf");
             return;
         }
-        if ("manager".equals(normalizeRole(targetUser.getRole()))) {
+        if (isProtectedManagerAccount(targetUser)) {
             redirect(response, request, "error=CannotDeleteManager");
             return;
         }
@@ -145,7 +150,9 @@ public class ManagerUserServlet extends HttpServlet {
     }
 
     private boolean isProtectedManagerAccount(UsersEntity user) {
-        return false;
+        return "manager".equals(normalizeRole(user.getRole()))
+                && user.getHave_Manager_access() != null
+                && user.getHave_Manager_access() == 1;
     }
 
     private Integer parseInteger(String value) {

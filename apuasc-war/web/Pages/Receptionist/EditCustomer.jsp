@@ -52,6 +52,8 @@
         .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
         .btn-primary { background: #0f766e; color: white; }
         .btn-secondary { background: #e5e7eb; color: #1e293b; }
+        .password-help { display: block; color: #ef4444; font-size: 12px; margin-top: 5px; min-height: 16px; }
+        .password-help.valid { color: #16a34a; }
         @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -84,8 +86,11 @@
                 <% if ("DuplicateEmail".equals(request.getParameter("error"))) { %>
                     <div class="message error">That email is already used by another account.</div>
                 <% } %>
+                <% if ("WeakPassword".equals(request.getParameter("error"))) { %>
+                    <div class="message error">Password must be at least 8 characters and include uppercase, lowercase, number, and special character.</div>
+                <% } %>
 
-                <form action="<%= request.getContextPath() %>/ReceptionistCustomerProfileServlet" method="post">
+                <form action="<%= request.getContextPath() %>/ReceptionistCustomerProfileServlet" method="post" onsubmit="return validateOptionalPassword('new_password', 'passwordHelp');">
                     <input type="hidden" name="customerId" value="<%= customer.getId() %>">
                     <div class="form-grid">
                         <div class="form-group">
@@ -139,6 +144,7 @@
                         <div class="form-group">
                             <label for="new_password">Reset Password</label>
                             <input type="password" id="new_password" name="new_password" placeholder="Leave blank to keep current password">
+                            <span id="passwordHelp" class="password-help"></span>
                         </div>
                     </div>
 
@@ -151,5 +157,35 @@
         </div>
     </div>
 </div>
+<script>
+    document.getElementById("new_password").addEventListener("input", function () {
+        updatePasswordHelp(this.value, document.getElementById("passwordHelp"));
+    });
+
+    function validateOptionalPassword(inputId, helpId) {
+        const password = document.getElementById(inputId).value;
+        if (password.length === 0) {
+            return true;
+        }
+        return updatePasswordHelp(password, document.getElementById(helpId));
+    }
+
+    function updatePasswordHelp(password, helpText) {
+        const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/;
+        if (password.length === 0) {
+            helpText.textContent = "";
+            helpText.classList.remove("valid");
+            return true;
+        }
+        if (!strongRegex.test(password)) {
+            helpText.textContent = "At least 8 chars, uppercase, lowercase, number, and special character";
+            helpText.classList.remove("valid");
+            return false;
+        }
+        helpText.textContent = "Strong password";
+        helpText.classList.add("valid");
+        return true;
+    }
+</script>
 </body>
 </html>

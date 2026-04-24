@@ -11,6 +11,7 @@ import java.util.List;
 import models.UsersEntity;
 import models.UsersEntityFacade;
 import utils.CountryLoader;
+import utils.PasswordValidator;
 import utils.hashPassword;
 import utils.NotificationService;
 
@@ -40,6 +41,13 @@ public class RegisterServlet extends HttpServlet {
 
         if (name.isEmpty() || email.isEmpty() || password.isEmpty() || role.isEmpty()) {
             request.setAttribute("errorMessage", "Name, email, password, and role are required.");
+            applyRolePermissions(request);
+            request.getRequestDispatcher("/register.jsp").forward(request, response);
+            return;
+        }
+
+        if (!PasswordValidator.isStrong(password)) {
+            request.setAttribute("errorMessage", PasswordValidator.REQUIREMENTS_MESSAGE);
             applyRolePermissions(request);
             request.getRequestDispatcher("/register.jsp").forward(request, response);
             return;

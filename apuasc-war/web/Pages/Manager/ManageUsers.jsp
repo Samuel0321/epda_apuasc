@@ -203,6 +203,18 @@
             margin-top: 6px;
         }
 
+        .password-help {
+            display: block;
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 5px;
+            min-height: 16px;
+        }
+
+        .password-help.valid {
+            color: #16a34a;
+        }
+
         .access-select {
             max-width: 220px;
         }
@@ -340,7 +352,11 @@
         <% } else if ("ProtectedManager".equals(request.getParameter("error"))) { %>
             <div class="alert alert-error">Managers without manager access cannot edit managers who already have manager access.</div>
         <% } else if ("CannotDeleteManager".equals(request.getParameter("error"))) { %>
-            <div class="alert alert-error">Manager accounts cannot be deleted.</div>
+            <div class="alert alert-error">Managers with manager access cannot be deleted.</div>
+        <% } else if ("DeleteSelf".equals(request.getParameter("error"))) { %>
+            <div class="alert alert-error">You cannot delete your own account.</div>
+        <% } else if ("WeakPassword".equals(request.getParameter("error"))) { %>
+            <div class="alert alert-error">Password must be at least 8 characters and include uppercase, lowercase, number, and special character.</div>
         <% } else if (request.getParameter("error") != null) { %>
             <div class="alert alert-error">The requested manager action could not be completed.</div>
         <% } %>
@@ -373,6 +389,7 @@
                     <% for (UsersEntity staff : directoryUsers) {
                         String staffRole = staff.getRole() == null ? "" : staff.getRole().trim().toLowerCase();
                         boolean managerLike = "manager".equals(staffRole);
+                        boolean protectedManager = managerLike && staff.getHave_Manager_access() != null && staff.getHave_Manager_access() == 1;
                     %>
                     <tr class="staff-row"
                         data-name="<%= staff.getName() %>"
@@ -414,14 +431,12 @@
                             <div class="action-buttons">
                                 <button type="button" class="btn-small btn-view" onclick="openViewModal(this)">View</button>
                                 <button type="button" class="btn-small btn-edit" onclick="openEditModal(this, '<%= staff.getId() %>')">Edit</button>
-                                <% if (!staff.getId().equals(currentUser.getId()) && !managerLike) { %>
-                                <form class="inline-form" method="post" action="<%= request.getContextPath() %>/ManagerUserServlet" onsubmit="return confirm('Delete this staff account?');">
+                                <% if (!staff.getId().equals(currentUser.getId()) && !protectedManager) { %>
+                                <form class="inline-form" method="post" action="<%= request.getContextPath() %>/ManagerUserServlet" onsubmit="return confirm('Delete this user account? This action cannot be undone.');">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="userId" value="<%= staff.getId() %>">
                                     <button type="submit" class="btn-small btn-delete">Delete</button>
                                 </form>
-                                <% } else if (managerLike) { %>
-                                <button type="button" class="btn-small btn-delete" disabled title="Manager accounts cannot be deleted">Delete</button>
                                 <% } %>
                             </div>
                         </td>
@@ -461,7 +476,7 @@
             <h3>Edit User</h3>
             <button class="close-btn" type="button" onclick="closeModal('editModal')">Close</button>
         </div>
-        <form method="post" action="<%= request.getContextPath() %>/ManagerUserServlet">
+        <form method="post" action="<%= request.getContextPath() %>/ManagerUserServlet" onsubmit="return validateOptionalPassword('editPassword', 'editPasswordHelp');">
             <input type="hidden" name="action" value="update">
             <input type="hidden" name="userId" id="editUserId">
             <div class="form-grid">
@@ -517,6 +532,7 @@
                 <div class="form-group full-span">
                     <label>Reset Password</label>
                     <input type="password" name="new_password" id="editPassword" placeholder="Leave blank to keep current password">
+                    <span id="editPasswordHelp" class="password-help"></span>
                 </div>
                 <div class="form-group full-span">
                     <label>Manager Access</label>
@@ -571,6 +587,8 @@
         document.getElementById("editCountryCode").value = row.dataset.countryCode || "";
         document.getElementById("editAddress").value = row.dataset.address || "";
         document.getElementById("editPassword").value = "";
+        document.getElementById("editPasswordHelp").textContent = "";
+        document.getElementById("editPasswordHelp").classList.remove("valid");
         document.getElementById("editManagerAccessDisplay").value =
             row.dataset.managerAccess === "1" ? "Enabled in table toggle" : "Disabled in table toggle";
 
@@ -579,6 +597,35 @@
 
     function closeModal(id) {
         document.getElementById(id).classList.remove("show");
+    }
+
+    document.getElementById("editPassword").addEventListener("input", function () {
+        updatePasswordHelp(this.value, document.getElementById("editPasswordHelp"));
+    });
+
+    function validateOptionalPassword(inputId, helpId) {
+        const password = document.getElementById(inputId).value;
+        if (password.length === 0) {
+            return true;
+        }
+        return updatePasswordHelp(password, document.getElementById(helpId));
+    }
+
+    function updatePasswordHelp(password, helpText) {
+        const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/;
+        if (password.length === 0) {
+            helpText.textContent = "";
+            helpText.classList.remove("valid");
+            return true;
+        }
+        if (!strongRegex.test(password)) {
+            helpText.textContent = "At least 8 chars, uppercase, lowercase, number, and special character";
+            helpText.classList.remove("valid");
+            return false;
+        }
+        helpText.textContent = "Strong password";
+        helpText.classList.add("valid");
+        return true;
     }
 
     window.addEventListener("click", function (event) {

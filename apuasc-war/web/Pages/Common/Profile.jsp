@@ -20,6 +20,7 @@
         .profile-body { padding: 30px; }
         .message { margin-bottom: 20px; padding: 12px 14px; border-radius: 8px; font-size: 14px; }
         .message.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .message.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .form-group { margin-bottom: 18px; }
         .form-group.full { grid-column: 1 / -1; }
@@ -31,6 +32,8 @@
         .btn-primary { background: #2563eb; color: white; }
         .btn-secondary { background: #e5e7eb; color: #1e293b; }
         .readonly-box { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; color: #475569; }
+        .password-help { display: block; color: #ef4444; font-size: 12px; margin-top: 5px; min-height: 16px; }
+        .password-help.valid { color: #16a34a; }
         @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -60,8 +63,11 @@
                 <% if ("1".equals(request.getParameter("updated"))) { %>
                     <div class="message success">Profile updated successfully.</div>
                 <% } %>
+                <% if ("WeakPassword".equals(request.getParameter("error"))) { %>
+                    <div class="message error">Password must be at least 8 characters and include uppercase, lowercase, number, and special character.</div>
+                <% } %>
 
-                <form action="<%= request.getContextPath() %>/UpdateProfileServlet" method="post">
+                <form action="<%= request.getContextPath() %>/UpdateProfileServlet" method="post" onsubmit="return validateOptionalPassword('new_password', 'passwordHelp');">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="name">Full Name</label>
@@ -102,6 +108,7 @@
                         <div class="form-group">
                             <label for="new_password">New Password</label>
                             <input type="password" id="new_password" name="new_password" placeholder="Leave blank to keep current password">
+                            <span id="passwordHelp" class="password-help"></span>
                         </div>
                     </div>
 
@@ -114,5 +121,35 @@
         </div>
     </div>
 </div>
+<script>
+    document.getElementById("new_password").addEventListener("input", function () {
+        updatePasswordHelp(this.value, document.getElementById("passwordHelp"));
+    });
+
+    function validateOptionalPassword(inputId, helpId) {
+        const password = document.getElementById(inputId).value;
+        if (password.length === 0) {
+            return true;
+        }
+        return updatePasswordHelp(password, document.getElementById(helpId));
+    }
+
+    function updatePasswordHelp(password, helpText) {
+        const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/;
+        if (password.length === 0) {
+            helpText.textContent = "";
+            helpText.classList.remove("valid");
+            return true;
+        }
+        if (!strongRegex.test(password)) {
+            helpText.textContent = "At least 8 chars, uppercase, lowercase, number, and special character";
+            helpText.classList.remove("valid");
+            return false;
+        }
+        helpText.textContent = "Strong password";
+        helpText.classList.add("valid");
+        return true;
+    }
+</script>
 </body>
 </html>

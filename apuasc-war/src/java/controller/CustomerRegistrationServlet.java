@@ -10,6 +10,7 @@ import java.util.List;
 import models.UsersEntity;
 import models.UsersEntityFacade;
 import utils.CountryLoader;
+import utils.PasswordValidator;
 import utils.hashPassword;
 
 public class CustomerRegistrationServlet extends HttpServlet {
@@ -35,6 +36,12 @@ public class CustomerRegistrationServlet extends HttpServlet {
 
         if (name.isEmpty() || email.isEmpty() || password.isEmpty()) {
             request.setAttribute("errorMessage", "Name, email, and password are required.");
+            request.getRequestDispatcher("/Pages/Receptionist/RegisterCustomer.jsp").forward(request, response);
+            return;
+        }
+
+        if (!PasswordValidator.isStrong(password)) {
+            request.setAttribute("errorMessage", PasswordValidator.REQUIREMENTS_MESSAGE);
             request.getRequestDispatcher("/Pages/Receptionist/RegisterCustomer.jsp").forward(request, response);
             return;
         }

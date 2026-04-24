@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import models.UsersEntity;
 import models.UsersEntityFacade;
+import utils.PasswordValidator;
 import utils.hashPassword;
 
 public class UpdateProfileServlet extends HttpServlet {
@@ -47,6 +48,10 @@ public class UpdateProfileServlet extends HttpServlet {
 
         String newPassword = trim(request.getParameter("new_password"));
         if (!newPassword.isEmpty()) {
+            if (!PasswordValidator.isStrong(newPassword)) {
+                response.sendRedirect(request.getContextPath() + "/Pages/Common/Profile.jsp?error=WeakPassword");
+                return;
+            }
             user.setPassword(hashPassword.hashPassword(newPassword));
         }
 
